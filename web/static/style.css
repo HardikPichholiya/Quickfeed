@@ -1,0 +1,241 @@
+/* Base Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: #f9f7f6; /* ← This is a nice soft off-white */
+  color: #111;
+}
+
+
+/* Navbar */
+.navbar {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 1000;
+  padding: 1rem 3rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  background-color: transparent;
+  color: white;
+}
+
+.navbar.scrolled {
+  background-color: #ffffff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  color: #000;
+}
+
+.navbar.scrolled .nav-links a,
+.navbar.scrolled .login {
+  color: #222;
+}
+
+.navbar.scrolled .get-started {
+  background-color: #2f3cf4;
+  color: #fff;
+}
+
+
+.logo-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.logo-area img {
+  width: 40px;
+  height: auto;
+}
+
+.nav-links {
+  list-style: none;
+  display: flex;
+  gap: 2rem;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: #222;
+  font-weight: 500;
+}
+
+.auth-links {
+  display: flex;
+  gap: 1rem;
+}
+
+.login {
+  text-decoration: none;
+  color: #222;
+  font-weight: 500;
+}
+
+.get-started {
+  background-color: #2f3cf4;
+  color: white;
+  padding: 0.6rem 1.2rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* Hero Section */
+.hero {
+  text-align: center;
+  padding: 6rem 2rem 3rem;
+  background: #fefefe;
+}
+
+.hero h1 {
+  font-size: 3.2rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+}
+
+.hero p {
+  font-size: 1.2rem;
+  color: #444;
+  max-width: 640px;
+  margin: 0 auto 2rem;
+}
+
+.cta {
+  display: inline-block;
+  background-color: #2f3cf4;
+  color: white;
+  padding: 0.75rem 2rem;
+  border-radius: 30px;
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 1rem;
+}
+
+.subtext {
+  display: block;
+  margin-top: 1rem;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+/* Split Scroll Section */
+.split-scroll {
+  display: flex;
+  height: 100vh;
+  position: relative;
+}
+
+.fixed-side {
+  flex: 1;
+  background: #35aef3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.fixed-side img {
+  width: 80%;
+  max-width: 400px;
+}
+
+.scroll-side {
+  flex: 1;
+  padding: 4rem 2rem;
+}
+
+.info-block {
+  margin-bottom: 8rem;
+}
+
+.info-block h2 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.info-block p {
+  font-size: 1.1rem;
+  color: #333;
+  max-width: 400px;
+}
+.footer {
+  background: #0e103d;
+  color: #f0f0f0;
+  padding: 4rem 2rem 2rem;
+  font-size: 0.95rem;
+}
+
+.footer-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3rem;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.footer-col h3,
+.footer-col h4 {
+  margin-bottom: 1rem;
+  color: #fff;
+}
+
+.footer-col p {
+  max-width: 300px;
+  line-height: 1.5;
+}
+
+.footer-col ul {
+  list-style: none;
+  padding: 0;
+}
+
+.footer-col ul li {
+  margin-bottom: 0.5rem;
+}
+
+.footer-col ul li a {
+  text-decoration: none;
+  color: #d1d1d1;
+  transition: color 0.3s;
+}
+
+.footer-col ul li a:hover {
+  color: #ffffff;
+}
+
+.social-icons a {
+  margin-right: 0.5rem;
+  display: inline-block;
+}
+
+.social-icons img {
+  width: 24px;
+  height: 24px;
+  filter: brightness(0) invert(1);
+  transition: transform 0.3s ease;
+}
+
+.social-icons img:hover {
+  transform: scale(1.1);
+}
+
+.footer-bottom {
+  text-align: center;
+  margin-top: 2rem;
+  border-top: 1px solid #444;
+  padding-top: 1rem;
+  font-size: 0.85rem;
+  color: #bbb;
+}

@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quickfeed Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- QR Code Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js"></script>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <h2>Quickfeed</h2>
+            </div>
+            <button class="close-btn" onclick="toggleSidebar()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <nav class="sidebar-nav">
+            <ul>
+                <li class="active">
+                    <a href="#" class="nav-link">
+                        <i class="fas fa-home"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-link">
+                        <i class="fas fa-comment-dots"></i>
+                        <span>Feedback</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-link">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Analytics</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-link">
+                        <i class="fas fa-cog"></i>
+                        <span>Settings</span>
+                    </a>
+                </li>
+                <li class="logout-item">
+                    <a href="/auth/logout" class="nav-link logout-link">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="menu-toggle" onclick="toggleSidebar()">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="brand-logo">
+                    <h1>Quickfeed</h1>
+                    <span class="brand-tagline">Real-time feedback, real-time growth</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="qr-btn" id="generateQRBtn">
+                    <span class="qr-icon">📱</span>
+                    Generate QR Code
+                </button>
+            </div>
+        </header>
+
+        <!-- Dashboard Content -->
+        <main class="dashboard-content">
+            <!-- Welcome Section -->
+            <section class="welcome-section">
+                <h2>Welcome back!</h2>
+                <p>Here's what's happening with your business today.</p>
+            </section>
+
+            <!-- Key Metrics -->
+            <section class="metrics-section">
+                <h3 class="section-title">Key Metrics</h3>
+                <div class="metrics-grid">
+                    <div class="metric-item">
+                        <div class="metric-icon">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value">1,245</div>
+                            <div class="metric-label">Total Feedback</div>
+                            <div class="metric-change positive">+12% from last month</div>
+                        </div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value">4.8</div>
+                            <div class="metric-label">Average Rating</div>
+                            <div class="metric-change positive">+0.3 from last month</div>
+                        </div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value">856</div>
+                            <div class="metric-label">Active Customers</div>
+                            <div class="metric-change positive">+8% from last month</div>
+                        </div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-icon">
+                            <i class="fas fa-trending-up"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value">23%</div>
+                            <div class="metric-label">Response Rate</div>
+                            <div class="metric-change positive">+5% from last month</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts Section -->
+            <section class="charts-section">
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>Feedback Trends</h3>
+                            <select class="chart-filter">
+                                <option>Last 30 days</option>
+                                <option>Last 3 months</option>
+                                <option>Last year</option>
+                            </select>
+                        </div>
+                        <div class="chart-content">
+                            <div class="chart-placeholder">
+                                <i class="fas fa-chart-area"></i>
+                                <p>Interactive chart showing feedback trends over time</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>Customer Satisfaction</h3>
+                            <div class="satisfaction-score">
+                                <span class="score-value">4.8</span>
+                                <span class="score-max">/5.0</span>
+                            </div>
+                        </div>
+                        <div class="chart-content">
+                            <div class="satisfaction-breakdown">
+                                <div class="satisfaction-bar">
+                                    <div class="bar-label">5 stars</div>
+                                    <div class="bar-container">
+                                        <div class="bar-fill" style="width: 68%"></div>
+                                    </div>
+                                    <div class="bar-value">68%</div>
+                                </div>
+                                <div class="satisfaction-bar">
+                                    <div class="bar-label">4 stars</div>
+                                    <div class="bar-container">
+                                        <div class="bar-fill" style="width: 22%"></div>
+                                    </div>
+                                    <div class="bar-value">22%</div>
+                                </div>
+                                <div class="satisfaction-bar">
+                                    <div class="bar-label">3 stars</div>
+                                    <div class="bar-container">
+                                        <div class="bar-fill" style="width: 7%"></div>
+                                    </div>
+                                    <div class="bar-value">7%</div>
+                                </div>
+                                <div class="satisfaction-bar">
+                                    <div class="bar-label">2 stars</div>
+                                    <div class="bar-container">
+                                        <div class="bar-fill" style="width: 2%"></div>
+                                    </div>
+                                    <div class="bar-value">2%</div>
+                                </div>
+                                <div class="satisfaction-bar">
+                                    <div class="bar-label">1 star</div>
+                                    <div class="bar-container">
+                                        <div class="bar-fill" style="width: 1%"></div>
+                                    </div>
+                                    <div class="bar-value">1%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Feedback -->
+            <section class="feedback-section">
+                <div class="section-header">
+                    <h3 class="section-title">Recent Feedback</h3>
+                    <a href="#" class="view-all-link">View all</a>
+                </div>
+                <div class="feedback-list">
+                    <div class="feedback-item">
+                        <div class="feedback-rating positive">
+                            <i class="fas fa-star"></i>
+                            <span>5.0</span>
+                        </div>
+                        <div class="feedback-content">
+                            <div class="feedback-text">"Excellent service! The staff was incredibly helpful and the experience exceeded my expectations."</div>
+                            <div class="feedback-meta">
+                                <span class="customer-name">Sarah Johnson</span>
+                                <span class="feedback-time">2 minutes ago</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="feedback-item">
+                        <div class="feedback-rating neutral">
+                            <i class="fas fa-comment"></i>
+                            <span>4.0</span>
+                        </div>
+                        <div class="feedback-content">
+                            <div class="feedback-text">"Good overall experience, but there's room for improvement in the waiting time."</div>
+                            <div class="feedback-meta">
+                                <span class="customer-name">Mike Chen</span>
+                                <span class="feedback-time">15 minutes ago</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="feedback-item">
+                        <div class="feedback-rating positive">
+                            <i class="fas fa-star"></i>
+                            <span>5.0</span>
+                        </div>
+                        <div class="feedback-content">
+                            <div class="feedback-text">"Amazing! Will definitely recommend to friends and family."</div>
+                            <div class="feedback-meta">
+                                <span class="customer-name">Emma Davis</span>
+                                <span class="feedback-time">1 hour ago</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- QR Code Modal -->
+    <div class="qr-modal" id="qrModal">
+        <div class="qr-modal-content">
+            <div class="qr-modal-header">
+                <h3>Feedback QR Code</h3>
+                <button class="qr-close-btn" id="closeQRModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="qr-modal-body">
+                <div class="qr-code-container">
+                    <canvas id="qrCanvas"></canvas>
+                </div>
+                <p class="qr-description">
+                    Customers can scan this QR code to access your feedback form instantly!
+                </p>
+                <div class="qr-actions">
+                    <button class="qr-download-btn" id="downloadQRBtn">
+                        <i class="fas fa-download"></i>
+                        Download QR Code
+                    </button>
+                    <button class="qr-share-btn" id="shareQRBtn">
+                        <i class="fas fa-share"></i>
+                        Share Link
+                    </button>
+                </div>
+                <div class="feedback-url">
+                    <label>Direct Link:</label>
+                    <div class="url-container">
+                        <input type="text" id="feedbackUrl" readonly>
+                        <button class="copy-url-btn" id="copyUrlBtn">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="qr-modal-overlay"></div>
+    </div>
+
+    <style>
+        /* QR Modal Styles */
+        .qr-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+        }
+
+        .qr-modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .qr-modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .qr-modal-content {
+            position: relative;
+            background: white;
+            border-radius: 16px;
+            padding: 0;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .qr-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .qr-modal-header h3 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .qr-close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #6b7280;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .qr-close-btn:hover {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .qr-modal-body {
+            padding: 24px;
+            text-align: center;
+        }
+
+        .qr-code-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 12px;
+            border: 2px dashed #d1d5db;
+        }
+
+        #qrCanvas {
+            border-radius: 8px;
+        }
+
+        .qr-description {
+            color: #6b7280;
+            margin-bottom: 24px;
+            font-size: 0.95rem;
+        }
+
+        .qr-actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            justify-content: center;
+        }
+
+        .qr-download-btn, .qr-share-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .qr-download-btn {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .qr-download-btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        .qr-share-btn {
+            background: #10b981;
+            color: white;
+        }
+
+        .qr-share-btn:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+
+        .feedback-url {
+            text-align: left;
+        }
+
+        .feedback-url label {
+            display: block;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .url-container {
+            display: flex;
+            gap: 8px;
+        }
+
+        #feedbackUrl {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background: #f9fafb;
+            font-size: 0.9rem;
+            color: #6b7280;
+        }
+
+        .copy-url-btn {
+            padding: 12px;
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            cursor: pointer;
+            color: #6b7280;
+            transition: all 0.2s ease;
+        }
+
+        .copy-url-btn:hover {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .copy-url-btn.copied {
+            background: #10b981;
+            color: white;
+            border-color: #10b981;
+        }
+
+        @media (max-width: 640px) {
+            .qr-actions {
+                flex-direction: column;
+            }
+            
+            .qr-download-btn, .qr-share-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+
+        // Close sidebar when clicking outside
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const menuToggle = document.querySelector('.menu-toggle');
+            
+            if (!sidebar.contains(event.target) && !menuToggle.contains(event.target)) {
+                sidebar.classList.remove('active');
+                document.getElementById('sidebarOverlay').classList.remove('active');
+            }
+        });
+
+        // QR button functionality
+        document.getElementById('generateQRBtn').addEventListener('click', function() {
+            generateQRCode();
+        });
+
+        // QR Modal functionality
+        const qrModal = document.getElementById('qrModal');
+        const closeQRModal = document.getElementById('closeQRModal');
+        const downloadQRBtn = document.getElementById('downloadQRBtn');
+        const shareQRBtn = document.getElementById('shareQRBtn');
+        const copyUrlBtn = document.getElementById('copyUrlBtn');
+        const feedbackUrlInput = document.getElementById('feedbackUrl');
+
+        function generateQRCode() {
+            // Replace this with your actual feedback form URL
+            const feedbackUrl = window.location.origin + '/feedback';
+            feedbackUrlInput.value = feedbackUrl;
+
+            // Generate QR code
+            const canvas = document.getElementById('qrCanvas');
+            QRCode.toCanvas(canvas, feedbackUrl, {
+                width: 200,
+                height: 200,
+                margin: 2,
+                color: {
+                    dark: '#1f2937',
+                    light: '#ffffff'
+                }
+            }, function (error) {
+                if (error) {
+                    console.error('QR Code generation failed:', error);
+                    alert('Failed to generate QR code. Please try again.');
+                } else {
+                    qrModal.classList.add('active');
+                }
+            });
+        }
+
+        // Close modal
+        closeQRModal.addEventListener('click', function() {
+            qrModal.classList.remove('active');
+        });
+
+        // Close modal when clicking overlay
+        document.querySelector('.qr-modal-overlay').addEventListener('click', function() {
+            qrModal.classList.remove('active');
+        });
+
+        // Download QR code
+        downloadQRBtn.addEventListener('click', function() {
+            const canvas = document.getElementById('qrCanvas');
+            const link = document.createElement('a');
+            link.download = 'quickfeed-qr-code.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+
+        // Share functionality
+        shareQRBtn.addEventListener('click', function() {
+            const feedbackUrl = feedbackUrlInput.value;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Quickfeed - Leave Your Feedback',
+                    text: 'Share your experience with us!',
+                    url: feedbackUrl
+                }).catch(console.error);
+            } else {
+                // Fallback: copy to clipboard
+                navigator.clipboard.writeText(feedbackUrl).then(function() {
+                    shareQRBtn.innerHTML = '<i class="fas fa-check"></i> Link Copied!';
+                    setTimeout(function() {
+                        shareQRBtn.innerHTML = '<i class="fas fa-share"></i> Share Link';
+                    }, 2000);
+                });
+            }
+        });
+
+        // Copy URL functionality
+        copyUrlBtn.addEventListener('click', function() {
+            feedbackUrlInput.select();
+            document.execCommand('copy');
+            
+            // Visual feedback
+            copyUrlBtn.classList.add('copied');
+            copyUrlBtn.innerHTML = '<i class="fas fa-check"></i>';
+            
+            setTimeout(function() {
+                copyUrlBtn.classList.remove('copied');
+                copyUrlBtn.innerHTML = '<i class="fas fa-copy"></i>';
+            }, 2000);
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && qrModal.classList.contains('active')) {
+                qrModal.classList.remove('active');
+            }
+        });
+
+        // Navigation link active state (excluding logout)
+        document.querySelectorAll('.nav-link:not(.logout-link)').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelectorAll('.sidebar-nav li').forEach(li => li.classList.remove('active'));
+                this.parentElement.classList.add('active');
+            });
+        });
+
+        // Logout confirmation (optional)
+        document.querySelector('.logout-link').addEventListener('click', function(e) {
+            if (!confirm('Are you sure you want to logout?')) {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify
+from flask_login import login_required, current_user
+from flask_socketio import SocketIO, emit, join_room, leave_room
+from web import db
+from web.models import User, Feedback
+from web.forms import FeedbackForm, PublicFeedbackForm
+import qrcode
+import io
+import base64
+from datetime import datetime, timedelta
+import json
+from sqlalchemy import func
+
+main = Blueprint('main', __name__)
+
+@main.route('/')
+def homepage():
+    return render_template('homepage.html')
+
+@main.route('/dashboard')
+@login_required
+def dashboard():
+    # Get user's recent feedback
+    recent_feedback = Feedback.query.filter_by(user_id=current_user.id)\
+                                  .order_by(Feedback.created_at.desc())\
+                                  .limit(5).all()
+    
+    # Get comprehensive stats
+    total_feedback = Feedback.query.count()
+    
+    # Calculate average rating
+    avg_rating_result = db.session.query(func.avg(Feedback.rating)).scalar()
+    average_rating = round(avg_rating_result, 1) if avg_rating_result else 0.0
+    
+    # Get rating distribution
+    rating_distribution = get_rating_distribution()
+    
+    # Get all feedback for real-time updates (both user's and anonymous)
+    all_recent_feedback = Feedback.query.order_by(Feedback.created_at.desc()).limit(10).all()
+    
+    # Calculate some mock metrics for now (you can replace with real calculations)
+    active_customers = get_active_customers_count()
+    response_rate = calculate_response_rate()
+    
+    return render_template('dashboard.html', 
+                         recent_feedback=recent_feedback,
+                         total_feedback=total_feedback,
+                         average_rating=average_rating,
+                         rating_distribution=rating_distribution,
+                         active_customers=active_customers,
+                         response_rate=response_rate,
+                         all_recent_feedback=all_recent_feedback)
+
+def get_rating_distribution():
+    """Get the distribution of ratings (1-5 stars)"""
+    total_feedback = Feedback.query.count()
+    if total_feedback == 0:
+        return {i: 0 for i in range(1, 6)}
+    
+    distribution = {}
+    for rating in range(1, 6):
+        count = Feedback.query.filter_by(rating=rating).count()
+        percentage = round((count / total_feedback) * 100)
+        distribution[rating] = percentage
+    
+    return distribution
+
+def get_active_customers_count():
+    """Calculate active customers (unique feedback providers in last 30 days)"""
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    
+    # Count unique customer names and emails from recent feedback
+    recent_feedback = Feedback.query.filter(Feedback.created_at >= thirty_days_ago).all()
+    unique_customers = set()
+    
+    for feedback in recent_feedback:
+        if feedback.customer_name:
+            unique_customers.add(feedback.customer_name)
+        elif feedback.customer_email:
+            unique_customers.add(feedback.customer_email)
+        elif feedback.user_id:
+            unique_customers.add(f"user_{feedback.user_id}")
+        else:
+            unique_customers.add("anonymous")
+    
+    return len(unique_customers)
+
+def calculate_response_rate():
+    """Calculate response rate (feedback received vs expected interactions)"""
+    # This is a simplified calculation - you might want to implement based on your business logic
+    total_feedback = Feedback.query.count()
+    # Assuming some base number of interactions (you can modify this logic)
+    expected_interactions = max(total_feedback * 4, 100)  # Simple assumption
+    
+    if expected_interactions > 0:
+        rate = round((total_feedback / expected_interactions) * 100)
+        return min(rate, 100)  # Cap at 100%
+    return 0
+
+@main.route('/api/dashboard-stats')
+@login_required
+def get_dashboard_stats():
+    """API endpoint to get updated dashboard statistics"""
+    total_feedback = Feedback.query.count()
+    
+    # Calculate average rating
+    avg_rating_result = db.session.query(func.avg(Feedback.rating)).scalar()
+    average_rating = round(avg_rating_result, 1) if avg_rating_result else 0.0
+    
+    # Get rating distribution
+    rating_distribution = get_rating_distribution()
+    
+    # Get other metrics
+    active_customers = get_active_customers_count()
+    response_rate = calculate_response_rate()
+    
+    return jsonify({
+        'total_feedback': total_feedback,
+        'average_rating': average_rating,
+        'rating_distribution': rating_distribution,
+        'active_customers': active_customers,
+        'response_rate': response_rate
+    })
+
+# Public feedback form (accessible without login)
+@main.route('/feedback', methods=['GET', 'POST'])
+def public_feedback():
+    form = PublicFeedbackForm()
+    if form.validate_on_submit():
+        feedback = Feedback(
+            title=form.title.data,
+            content=form.content.data,
+            rating=int(form.rating.data),
+            customer_name=form.customer_name.data,
+            customer_email=form.customer_email.data,
+            user_id=None  # Anonymous feedback
+        )
+        db.session.add(feedback)
+        db.session.commit()
+        
+        # Get updated statistics after adding new feedback
+        total_feedback = Feedback.query.count()
+        avg_rating_result = db.session.query(func.avg(Feedback.rating)).scalar()
+        average_rating = round(avg_rating_result, 1) if avg_rating_result else 0.0
+        rating_distribution = get_rating_distribution()
+        active_customers = get_active_customers_count()
+        response_rate = calculate_response_rate()
+        
+        # Emit real-time update to all connected dashboard users
+        from web import socketio
+        feedback_data = {
+            'id': feedback.id,
+            'title': feedback.title,
+            'content': feedback.content,
+            'rating': feedback.rating,
+            'customer_name': feedback.customer_name or 'Anonymous',
+            'created_at': feedback.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'time_ago': 'Just now',
+            # Include updated statistics
+            'stats': {
+                'total_feedback': total_feedback,
+                'average_rating': average_rating,
+                'rating_distribution': rating_distribution,
+                'active_customers': active_customers,
+                'response_rate': response_rate
+            }
+        }
+        socketio.emit('new_feedback', feedback_data, room='dashboard_users')
+        
+        flash('Thank you for your feedback!', 'success')
+        return redirect(url_for('main.feedback_success'))
+    
+    return render_template('feedback/public_form.html', form=form)
+
+@main.route('/feedback/success')
+def feedback_success():
+    return render_template('feedback/success.html')
+
+# Private feedback form for logged-in users
+@main.route('/my-feedback', methods=['GET', 'POST'])
+@login_required
+def create_feedback():
+    form = FeedbackForm()
+    if form.validate_on_submit():
+        feedback = Feedback(
+            title=form.title.data,
+            content=form.content.data,
+            rating=int(form.rating.data),
+            user_id=current_user.id
+        )
+        db.session.add(feedback)
+        db.session.commit()
+        
+        # Get updated statistics after adding new feedback
+        total_feedback = Feedback.query.count()
+        avg_rating_result = db.session.query(func.avg(Feedback.rating)).scalar()
+        average_rating = round(avg_rating_result, 1) if avg_rating_result else 0.0
+        rating_distribution = get_rating_distribution()
+        active_customers = get_active_customers_count()
+        response_rate = calculate_response_rate()
+        
+        # Emit real-time update to all connected dashboard users
+        from web import socketio
+        feedback_data = {
+            'id': feedback.id,
+            'title': feedback.title,
+            'content': feedback.content,
+            'rating': feedback.rating,
+            'customer_name': current_user.full_name,
+            'created_at': feedback.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'time_ago': 'Just now',
+            # Include updated statistics
+            'stats': {
+                'total_feedback': total_feedback,
+                'average_rating': average_rating,
+                'rating_distribution': rating_distribution,
+                'active_customers': active_customers,
+                'response_rate': response_rate
+            }
+        }
+        socketio.emit('new_feedback', feedback_data, room='dashboard_users')
+        
+        flash('Feedback submitted successfully!', 'success')
+        return redirect(url_for('main.dashboard'))
+    
+    return render_template('feedback/create.html', form=form)
+
+# QR Code generation route
+@main.route('/generate-qr')
+@login_required
+def generate_qr():
+    # Get the full URL for the public feedback form
+    feedback_url = url_for('main.public_feedback', _external=True)
+    
+    # Create QR code
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(feedback_url)
+    qr.make(fit=True)
+    
+    # Create QR code image
+    qr_img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Convert to base64 for embedding in HTML
+    img_buffer = io.BytesIO()
+    qr_img.save(img_buffer, format='PNG')
+    img_buffer.seek(0)
+    img_base64 = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
+    
+    return render_template('qr_code.html', 
+                         qr_image=img_base64, 
+                         feedback_url=feedback_url)
+
+# Route to download QR code as PNG
+@main.route('/download-qr')
+@login_required
+def download_qr():
+    # Get the full URL for the public feedback form
+    feedback_url = url_for('main.public_feedback', _external=True)
+    
+    # Create QR code
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(feedback_url)
+    qr.make(fit=True)
+    
+    # Create QR code image
+    qr_img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Save to BytesIO
+    img_buffer = io.BytesIO()
+    qr_img.save(img_buffer, format='PNG')
+    img_buffer.seek(0)
+    
+    # Create response
+    response = make_response(img_buffer.getvalue())
+    response.headers['Content-Type'] = 'image/png'
+    response.headers['Content-Disposition'] = 'attachment; filename=feedback_qr_code.png'
+    
+    return response
+
+# Route to view all feedback (for admin/business owner)
+@main.route('/all-feedback')
+@login_required
+def view_all_feedback():
+    # Get all feedback (both from logged-in users and anonymous)
+    all_feedback = Feedback.query.order_by(Feedback.created_at.desc()).all()
+    
+    return render_template('feedback/all_feedback.html', feedback_list=all_feedback)
+
+# WebSocket event handlers
+def register_socketio_events(socketio):
+    @socketio.on('connect')
+    def handle_connect():
+        print(f'Client connected: {request.sid}')
+    
+    @socketio.on('disconnect')
+    def handle_disconnect():
+        print(f'Client disconnected: {request.sid}')
+    
+    @socketio.on('join_dashboard')
+    def handle_join_dashboard():
+        join_room('dashboard_users')
+        emit('status', {'msg': 'Connected to dashboard updates'})
+        print(f'Client {request.sid} joined dashboard room')
+    
+    @socketio.on('leave_dashboard')
+    def handle_leave_dashboard():
+        leave_room('dashboard_users')
+        emit('status', {'msg': 'Disconnected from dashboard updates'})
+        print(f'Client {request.sid} left dashboard room')
+    
+    @socketio.on('request_feedback_update')
+    def handle_feedback_update_request():
+        # Send latest feedback to the requesting client
+        latest_feedback = Feedback.query.order_by(Feedback.created_at.desc()).limit(10).all()
+        feedback_list = []
+        for feedback in latest_feedback:
+            feedback_data = {
+                'id': feedback.id,
+                'title': feedback.title,
+                'content': feedback.content,
+                'rating': feedback.rating,
+                'customer_name': feedback.customer_name or 'Anonymous',
+                'created_at': feedback.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'time_ago': get_time_ago(feedback.created_at)
+            }
+            feedback_list.append(feedback_data)
+        
+        emit('feedback_update', {'feedback_list': feedback_list})
+
+def get_time_ago(timestamp):
+    """Calculate time ago string from timestamp"""
+    now = datetime.utcnow()
+    diff = now - timestamp
+    
+    if diff.days > 0:
+        return f"{diff.days} day{'s' if diff.days != 1 else ''} ago"
+    elif diff.seconds > 3600:
+        hours = diff.seconds // 3600
+        return f"{hours} hour{'s' if hours != 1 else ''} ago"
+    elif diff.seconds > 60:
+        minutes = diff.seconds // 60
+        return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
+    else:
+        return "Just now"

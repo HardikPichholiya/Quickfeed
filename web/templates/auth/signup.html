@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up - QuickFeed{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h1>Get Started</h1>
+            <p>Create your QuickFeed account</p>
+        </div>
+        
+        <form method="POST" class="auth-form">
+            {{ form.hidden_tag() }}
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="first_name">First Name</label>
+                    {{ form.first_name(class="form-input") }}
+                    {% if form.first_name.errors %}
+                        <div class="error-message">{{ form.first_name.errors[0] }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group">
+                    <label for="last_name">Last Name</label>
+                    {{ form.last_name(class="form-input") }}
+                    {% if form.last_name.errors %}
+                        <div class="error-message">{{ form.last_name.errors[0] }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                {{ form.email(class="form-input") }}
+                {% if form.email.errors %}
+                    <div class="error-message">{{ form.email.errors[0] }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                {{ form.password(class="form-input") }}
+                {% if form.password.errors %}
+                    <div class="error-message">{{ form.password.errors[0] }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm_password">Confirm Password</label>
+                {{ form.confirm_password(class="form-input") }}
+                {% if form.confirm_password.errors %}
+                    <div class="error-message">{{ form.confirm_password.errors[0] }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label class="checkbox-container">
+                    {{ form.terms() }}
+                    <span class="checkmark"></span>
+                    I agree to the <a href="#"id="Terms of Service" class="auth-link">Terms of Service</a> and <a href="#" id="Privacy Policy" class="auth-link">Privacy Policy</a>
+                </label>
+            </div>
+            
+            {{ form.submit(class="btn-primary btn-full") }}
+        </form>
+        
+        <div class="auth-footer">
+            <p>Already have an account? <a href="{{ url_for('auth.login') }}" class="auth-link">Sign in</a></p>
+        </div>
+    </div>
+    
+    <div class="auth-visual">
+        <div class="visual-content">
+            <h2>Capture feedback<br>in seconds</h2>
+            <p>QuickFeed lets your customers provide feedback instantly using a simple interface.</p>
+            <div class="feature-list">
+                <div class="feature">✓ Real-time notifications</div>
+                <div class="feature">✓ Instant customer insights</div>
+                <div class="feature">✓ Easy integration</div>
+                <div class="feature">✓ Analytics dashboard</div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    document.getElementById('Terms of Service').addEventListener('click', function(e) {
+    e.preventDefault(); // Prevent default link behavior
+    alert("Terms of Service will be update later");
+  });
+    document.getElementById('Privacy Policy').addEventListener('click', function(e) {
+    e.preventDefault(); // Prevent default link behavior
+    alert("Privacy Policy will be update later");
+  });
+</script>
+{% endblock %}

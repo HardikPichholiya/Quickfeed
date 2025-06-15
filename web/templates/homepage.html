@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>QuickFeed – Real-time Customer Feedback</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar" id="navbar">
+    <div class="logo-area">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="QuickFeed" />
+      <span>QuickFeed</span>
+    </div>
+    <ul class="nav-links">
+      <li><a href="#solutions">Solutions</a></li>
+      <li><a href="#"id="customerStoriesLink">Customer Stories</a></li>
+      <li><a href="#Resources">Resources</a></li>
+    </ul>
+    <div class="auth-links">
+      <!-- <a href="#" class="login">Login</a> -->
+      <a href="{{ url_for('auth.login') }}" class="get-started">Get Started</a>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="hero">
+    <h1>Real-time feedback<br>real-time growth</h1>
+    <p>Empowering local businesses through instant, actionable customer feedback.</p>
+  </header>
+
+  <!-- Split Scroll Section -->
+  <section class="split-scroll" id="solutions">
+    <div class="fixed-side">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="QuickFeed Dashboard" />
+    </div>
+    <div class="scroll-side">
+      <div class="info-block">
+        <h2>Capture in seconds</h2>
+        <p>QuickFeed lets your customers provide feedback instantly using a simple interface.</p>
+      </div>
+      <div class="info-block">
+        <h2>Respond fast</h2>
+        <p>Get notified and act on feedback right away – improve experience before they even leave.</p>
+      </div>
+      <div class="info-block">
+        <h2>Grow with insights</h2>
+        <p>Use real-time analytics to discover trends, pain points, and opportunities.</p>
+      </div>
+  </section>
+  <footer class="footer" id="Resources">
+  <div class="footer-container">
+    <div class="footer-col">
+      <h3>QuickFeed</h3>
+      <p>Empowering local businesses through instant, actionable customer feedback.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Navigation</h4>
+      <ul>
+        <li><a href="#">Platform</a></li>
+        <li><a href="#">Solutions</a></li>
+        <li><a href="#">Customer Stories</a></li>
+        <li><a href="#">Pricing</a></li>
+        <li><a href="#">Resources</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Support</h4>
+      <ul>
+        <li><a href="#">Help Center</a></li>
+        <li><a href="#">Contact Us</a></li>
+        <li><a href="#">Privacy Policy</a></li>
+        <li><a href="#">Terms of Service</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Follow Us</h4>
+      <div class="social-icons">
+        <a href="#"><img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" /></a>
+        <a href="#"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" /></a>
+        <a href="#"><img src="https://cdn-icons-png.flaticon.com/512/733/733614.png" alt="Instagram" /></a>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>&copy; 2025 QuickFeed. All rights reserved.</p>
+  </div>
+</footer>
+<script>
+  const navbar = document.getElementById('navbar');
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 20) {
+      navbar.classList.add('scrolled');
+    } else {
+      navbar.classList.remove('scrolled');
+    }
+  });
+  // Show alert when "Customer Stories" is clicked
+  document.getElementById('customerStoriesLink').addEventListener('click', function(e) {
+    e.preventDefault(); // Prevent default link behavior
+    alert("Customer Stories will be updated soon!");
+  });
+</script>
+</body>
+</html>

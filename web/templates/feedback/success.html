@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank You - Quickfeed</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='success.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="success-container">
+        <div class="success-icon">
+            <i class="fas fa-check"></i>
+        </div>
+        
+        <h1 class="success-title">Thank You!</h1>
+        <p class="success-message">
+            Your feedback has been successfully submitted. We truly appreciate you taking the time to share your experience with us.
+        </p>
+
+        <div class="success-details">
+            <h3>Feedback Summary</h3>
+            <div class="detail-item">
+                <span class="detail-label">Submitted</span>
+                <span class="detail-value" id="timestamp"></span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Status</span>
+                <span class="detail-value" style="color: #10b981;">✓ Received</span>
+            </div>
+        </div>
+        <div class="action-buttons">
+            <a href="/feedback" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                Submit Another Feedback
+            </a>
+            <button onclick="handleClose()" class="btn btn-success" id="closeBtn">
+                <i class="fas fa-home"></i>
+                Go to Homepage
+            </button>
+            <button onclick="goBack()" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i>
+                Go Back
+            </button>
+        </div>
+
+        <div class="footer-text">
+            Thank you for helping us improve! <br>
+            Powered by <span class="logo-small">📱 Quickfeed</span>
+        </div>
+    </div>
+
+    <script>
+        // Set current timestamp
+        document.getElementById('timestamp').textContent = new Date().toLocaleString();
+
+        // Handle close functionality
+        function handleClose() {
+            // Try to close the window first (works if opened by JavaScript)
+            if (window.opener || window.history.length <= 1) {
+                window.close();
+                // If window.close() doesn't work, redirect to homepage after a short delay
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 100);
+            } else {
+                // If there's browser history, go to homepage
+                window.location.href = '/';
+            }
+        }
+
+        // Go back to previous page
+        function goBack() {
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = '/';
+            }
+        }
+        // Check if page was opened in a popup or new tab
+        window.addEventListener('load', function() {
+            // Update button text based on context
+            const closeBtn = document.getElementById('closeBtn');
+            if (window.opener) {
+                closeBtn.innerHTML = '<i class="fas fa-times"></i> Close Window';
+            }
+        });
+    </script>
+</body>
+</html>

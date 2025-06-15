@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Share Your Feedback - Quickfeed</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='public_form.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="feedback-container">
+        <div class="feedback-header">
+            <h1>We'd Love Your Feedback!</h1>
+            <p>Help us improve by sharing your experience</p>
+        </div>
+
+        <form method="POST" class="feedback-form">
+            {{ form.hidden_tag() }}
+            
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'success' if category == 'success' else 'error' }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="form-group">
+                {{ form.customer_name.label(class="form-label") }}
+                {{ form.customer_name(class="form-input", placeholder="Enter your name") }}
+                {% if form.customer_name.errors %}
+                    {% for error in form.customer_name.errors %}
+                        <div class="error-message">
+                            <i class="fas fa-exclamation-circle"></i>
+                            {{ error }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                {{ form.customer_email.label(class="form-label") }}
+                {{ form.customer_email(class="form-input", placeholder="Enter your email for follow-up") }}
+                {% if form.customer_email.errors %}
+                    {% for error in form.customer_email.errors %}
+                        <div class="error-message">
+                            <i class="fas fa-exclamation-circle"></i>
+                            {{ error }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                {{ form.rating.label(class="form-label") }}
+                {{ form.rating(class="form-select") }}
+                {% if form.rating.errors %}
+                    {% for error in form.rating.errors %}
+                        <div class="error-message">
+                            <i class="fas fa-exclamation-circle"></i>
+                            {{ error }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                {{ form.title.label(class="form-label") }}
+                {{ form.title(class="form-input", placeholder="Brief summary of your feedback") }}
+                {% if form.title.errors %}
+                    {% for error in form.title.errors %}
+                        <div class="error-message">
+                            <i class="fas fa-exclamation-circle"></i>
+                            {{ error }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                {{ form.content.label(class="form-label") }}
+                {{ form.content(class="form-input form-textarea") }}
+                {% if form.content.errors %}
+                    {% for error in form.content.errors %}
+                        <div class="error-message">
+                            <i class="fas fa-exclamation-circle"></i>
+                            {{ error }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            {{ form.submit(class="btn-primary") }}
+
+            <div class="footer-text">
+                Powered by <span class="logo-small">📱 Quickfeed</span>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Add some interactivity
+        document.getElementById('rating').addEventListener('change', function() {
+            const value = this.value;
+            if (value) {
+                // Add a subtle animation when rating is selected
+                this.style.transform = 'scale(1.02)';
+                setTimeout(() => {
+                    this.style.transform = 'scale(1)';
+                }, 150);
+            }
+        });
+
+        // Auto-resize textarea
+        const textarea = document.getElementById('content');
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+        });
+
+        // Form submission animation
+        document.querySelector('.feedback-form').addEventListener('submit', function(e) {
+            const submitBtn = document.querySelector('.btn-primary');
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+            submitBtn.disabled = true;
+        });
+    </script>
+</body>
+</html>

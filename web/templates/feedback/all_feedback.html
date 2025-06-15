@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}All Feedback - QuickFeed{% endblock %}
+
+{% block content %}
+<div class="container" style="padding: 2rem;">
+    <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 1.5rem;">All Customer Feedback</h2>
+
+    {% if feedback_list %}
+        <div class="feedback-grid">
+            {% for feedback in feedback_list %}
+                <div class="feedback-card">
+                    <div class="feedback-header">
+                        <div class="feedback-title">{{ feedback.title }}</div>
+                        <div class="feedback-rating">
+                            {% for i in range(1, 6) %}
+                                {% if i <= feedback.rating %}
+                                    <i class="fas fa-star" style="color: #facc15;"></i>
+                                {% else %}
+                                    <i class="far fa-star" style="color: #d1d5db;"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="feedback-body">
+                        <p>{{ feedback.content }}</p>
+                    </div>
+                    <div class="feedback-meta">
+                        <small>
+                            {% if feedback.customer_name %}
+                                From: {{ feedback.customer_name }}
+                            {% elif feedback.user %}
+                                From: {{ feedback.user.full_name }}
+                            {% else %}
+                                From: Anonymous
+                            {% endif %}
+                            • {{ feedback.created_at.strftime('%b %d, %Y %I:%M %p') }}
+                        </small>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>No feedback has been submitted yet.</p>
+    {% endif %}
+</div>
+
+<style>
+    .feedback-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .feedback-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        transition: all 0.2s ease;
+    }
+
+    .feedback-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+    }
+
+    .feedback-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+
+    .feedback-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .feedback-body {
+        font-size: 0.95rem;
+        color: #374151;
+        margin-bottom: 1rem;
+    }
+
+    .feedback-meta {
+        font-size: 0.85rem;
+        color: #6b7280;
+    }
+</style>
+{% endblock %}
