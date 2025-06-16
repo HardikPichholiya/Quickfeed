@@ -4,15 +4,12 @@ from flask_login import LoginManager
 from flask_socketio import SocketIO
 import os
 
-# Initialize extensions
 db = SQLAlchemy()
 login_manager = LoginManager()
 socketio = SocketIO()
 
 def create_app():
     app = Flask(__name__)
-    
-    # Configuration
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'your-secret-key-here'
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///quickfeed.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
