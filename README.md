@@ -1,0 +1,1 @@
+QuickFeed is a QR-based feedback system for local shops. Customers scan a QR code to submit feedback instantly, earning loyalty points in return. Shopkeepers access real-time insights through a dashboard, helping them improve service quality and customer satisfaction — all without needing an app.
