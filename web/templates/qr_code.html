@@ -337,9 +337,13 @@
             </div>
 
             <div class="action-buttons">
-                <a href="/download-qr" class="btn btn-primary" download>
-                    <i class="fas fa-download"></i>
-                    Download QR Code
+                <a href="{{ url_for('main.download_qr') }}" class="btn btn-primary">
+    <i class="fas fa-download"></i>
+    Download QR Code
+</a>
+
+                    
+                    
                 </a>
                 <button onclick="window.print()" class="btn btn-secondary">
                     <i class="fas fa-print"></i>

@@ -107,9 +107,34 @@
         <main class="dashboard-content">
             <!-- Welcome Section -->
             <section class="welcome-section">
-                <h2>Welcome back!</h2>
+                <h2>Welcome {{ session.get ('shopname') or current_user.first_name + ' ' + current_user.last_name}}!</h2>
                 <p>Here's what's happening with your business today.</p>
             </section>
+
+
+            <!-- Item Management Section -->
+<section class="items-section" style="margin-top: 2rem;">
+    <h3 class="section-title">Items Available</h3>
+
+    {% if items %}
+        <ul style="padding-left: 1.2rem;">
+            {% for item in items %}
+                <li>{{ item.name }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No items added yet.</p>
+    {% endif %}
+
+    <!-- Add Item Form -->
+    <form method="POST" style="margin-top: 1rem;" class="add-item-form">
+        <div style="display: flex; gap: 0.5rem;">
+            <input type="text" name="item_name" class="form-control" placeholder="Enter new item..." required style="flex: 1; padding: 0.5rem; border-radius: 6px;">
+            <button type="submit" class="btn btn-primary" style="padding: 0.5rem 1rem;">+ Add Item</button>
+        </div>
+    </form>
+</section>
+
 
             <!-- Key Metrics -->
             <section class="metrics-section">
@@ -191,7 +216,9 @@
                                 <div class="satisfaction-bar">
                                     <div class="bar-label">{{ rating }} star{{ 's' if rating != 1 else '' }}</div>
                                     <div class="bar-container">
-                                        <div class="bar-fill" data-rating="{{ rating }}" style="width: {{ rating_distribution[rating] if rating_distribution else 0 }}%"></div>
+                                        <div class="bar-fill" 
+                                         data-rating="{{ rating }}"
+                                         style="width: {{ (rating_distribution[rating] if rating_distribution and rating_distribution[rating] is not none else 0) | round(2) }}%"></div>
                                     </div>
                                     <div class="bar-value" data-rating-value="{{ rating }}">{{ rating_distribution[rating] if rating_distribution else 0 }}%</div>
                                 </div>

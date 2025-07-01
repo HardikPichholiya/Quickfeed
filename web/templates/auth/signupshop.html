@@ -39,6 +39,21 @@
                 {% endif %}
             </div>
 
+            <div class="form-group">
+                <label for="shopname">Shop Name</label>
+                {{ form.shopname(class="form-input") }}
+                {% if form.shopname.errors %}
+                    <div class="error-message">{{ form.shopname.errors[0] }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="username">Shop Username</label>
+                {{ form.username(class="form-input") }}
+                {% if form.username.errors %}
+                    <div class="error-message">{{ form.username.errors[0] }}</div>
+                {% endif %}
+            </div>
             
             <div class="form-group">
                 <label for="password">Password</label>
