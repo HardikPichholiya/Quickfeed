@@ -26,13 +26,15 @@ def create_app():
     
     @login_manager.user_loader
     def load_user(user_id):
-        from web.models import User
-        return User.query.get(int(user_id))
+        from web.models import User , Shopkeeper
+        return User.query.get(int(user_id)) or  Shopkeeper.query.get(int(user_id))
     
     # Register blueprints
     from web.routes import main
     from web.auth import auth
-    
+    from web.routes import customer
+    app.register_blueprint(customer)
+
     app.register_blueprint(main)
     app.register_blueprint(auth, url_prefix='/auth')
     
