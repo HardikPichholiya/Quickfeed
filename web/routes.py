@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from web import db
-from web.models import User, Feedback ,Shopkeeper , ItemFeedback
+from web.models import User, Feedback ,Shopkeeper , ItemFeedback , Item
 from web.forms import FeedbackForm, PublicFeedbackForm
 import qrcode
 import io
@@ -14,9 +14,11 @@ from web import socketio
 import qrcode
 import io
 import base64
-
+from flask import abort
 from flask import render_template, url_for
 from flask_login import login_required, current_user
+from flask import session
+
 
 #customer routes
 
@@ -33,44 +35,62 @@ main = Blueprint('main', __name__)
 def homepage():
     return render_template('homepage.html')
 
-
+from web.models import Item
 @main.route('/dashboard',methods=['GET', 'POST']) #added on 29
 @login_required
 def dashboard():
+    #
+    shopkeeper_id = session.get('shopkeeper_id')  # Or however you track login
+    all_recent_feedback = Feedback.query.join(Feedback.item).filter(
+        Item.shopkeeper_id == shopkeeper_id
+    ).order_by(Feedback.created_at.desc()).limit(10).all()
+
+    # Load item feedbacks for each feedback
+    feedback_with_items = []
+    for feedback in all_recent_feedback:
+        item_feedbacks = ItemFeedback.query.filter_by(feedback_id=feedback.id).join(Item).all()
+        feedback_with_items.append({
+            'feedback': feedback,
+            'item_feedbacks': item_feedbacks
+        })
+    
+    
+    
+    
+    
+    
+    
     ##
+    if not isinstance (current_user, Shopkeeper):
+        abort(403) 
         # Add item logic
     if request.method == 'POST':
         item_name = request.form.get('item_name')
         if item_name:
-            from web.models import Item
             new_item = Item(name=item_name, shopkeeper_id=current_user.id)
             db.session.add(new_item)
             db.session.commit()
             flash(f'Item "{item_name}" added successfully!', 'success')
         return redirect(url_for('main.dashboard'))
 
-    from web.models import Item
+    
     items = Item.query.filter_by(shopkeeper_id=current_user.id).all()
 
-    ##
-    # Get user's recent feedback
+    feedback_query = Feedback.query.join(Feedback.item).filter(Item.shopkeeper_id == current_user.id)
+
     recent_feedback = Feedback.query.filter_by(user_id=current_user.id)\
                                   .order_by(Feedback.created_at.desc())\
                                   .limit(5).all()
+    all_recent_feedback = feedback_query.order_by(Feedback.created_at.desc()).limit(10).all()
     
-    # Get comprehensive stats
     total_feedback = Feedback.query.count()
     
-    # Calculate average rating
+    
     avg_rating_result = db.session.query(func.avg(Feedback.rating)).scalar()
     average_rating = round(avg_rating_result, 1) if avg_rating_result else 0.0
     
     # Get rating distribution
-    rating_distribution = get_rating_distribution()
-    
-    # Get all feedback for real-time updates (both user's and anonymous)
-    all_recent_feedback = Feedback.query.order_by(Feedback.created_at.desc()).limit(10).all()
-    
+    rating_distribution = get_rating_distribution()    
     # Calculate some mock metrics for now (you can replace with real calculations)
     active_customers = get_active_customers_count()
     response_rate = calculate_response_rate()

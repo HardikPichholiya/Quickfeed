@@ -239,10 +239,17 @@
                     {% if all_recent_feedback %}
                         {% for feedback in all_recent_feedback %}
                         <div class="feedback-item" data-feedback-id="{{ feedback.id }}">
-                            <div class="feedback-rating {{ 'positive' if feedback.rating >= 4 else 'neutral' if feedback.rating == 3 else 'negative' }}">
-                                <i class="fas fa-{{ 'star' if feedback.rating >= 4 else 'comment' if feedback.rating == 3 else 'exclamation-triangle' }}"></i>
-                                <span>{{ feedback.rating }}.0</span>
-                            </div>
+                            <div class="feedback-rating-stars">
+    {% for i in range(1, 6) %}
+        {% if i <= feedback.rating %}
+            <i class="fas fa-star" style="color: gold;"></i>
+        {% else %}
+            <i class="far fa-star" style="color: gold;"></i>
+        {% endif %}
+    {% endfor %}
+    <span style="margin-left: 8px;">({{ feedback.rating }})</span>
+</div>
+
                             <div class="feedback-content">
                                 <div class="feedback-text">"{{ feedback.content[:100] }}{% if feedback.content|length > 100 %}...{% endif %}"</div>
                                 <div class="feedback-meta">
