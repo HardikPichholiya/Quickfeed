@@ -52,7 +52,7 @@
                     </a>
                 </li>
                 <li>
-                    <a href="/all-feedback" class="nav-link">
+                    <a href="/dashboard/my-feedback" class="nav-link">
                         <i class="fas fa-comment-dots"></i>
                         <span>All Feedback</span>
                     </a>
@@ -67,6 +67,12 @@
                     <a href="#" id="settings" class="nav-link">
                         <i class="fas fa-cog"></i>
                         <span>Settings</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" id="settings" class="nav-link">
+                        <i class="fas fa-cog"></i>
+                        <span>Setup</span>
                     </a>
                 </li>
                 <li class="logout-item">
@@ -107,34 +113,9 @@
         <main class="dashboard-content">
             <!-- Welcome Section -->
             <section class="welcome-section">
-                <h2>Welcome {{ session.get ('shopname') or current_user.first_name + ' ' + current_user.last_name}}!</h2>
+                <h2>Welcome {{ session.get ('shopname') or current_user.first_name + ' ' + current_user.last_name}} !</h2>
                 <p>Here's what's happening with your business today.</p>
             </section>
-
-
-            <!-- Item Management Section -->
-<section class="items-section" style="margin-top: 2rem;">
-    <h3 class="section-title">Items Available</h3>
-
-    {% if items %}
-        <ul style="padding-left: 1.2rem;">
-            {% for item in items %}
-                <li>{{ item.name }}</li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>No items added yet.</p>
-    {% endif %}
-
-    <!-- Add Item Form -->
-    <form method="POST" style="margin-top: 1rem;" class="add-item-form">
-        <div style="display: flex; gap: 0.5rem;">
-            <input type="text" name="item_name" class="form-control" placeholder="Enter new item..." required style="flex: 1; padding: 0.5rem; border-radius: 6px;">
-            <button type="submit" class="btn btn-primary" style="padding: 0.5rem 1rem;">+ Add Item</button>
-        </div>
-    </form>
-</section>
-
 
             <!-- Key Metrics -->
             <section class="metrics-section">
@@ -233,7 +214,7 @@
             <section class="feedback-section">
                 <div class="section-header">
                     <h3 class="section-title">Recent Feedback</h3>
-                    <a href="/all-feedback" class="view-all-link">View all</a>
+                    <a href="/dashboard/my-feedback" class="view-all-link">View all</a>
                 </div>
                 <div class="feedback-list" id="feedbackList">
                     {% if all_recent_feedback %}

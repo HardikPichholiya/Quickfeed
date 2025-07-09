@@ -1,454 +1,721 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify, session, abort
 from flask_login import login_required, current_user
-from flask_socketio import SocketIO, emit, join_room, leave_room
-from web import db
-from web.models import User, Feedback ,Shopkeeper , ItemFeedback , Item
-from web.forms import FeedbackForm, PublicFeedbackForm
-import qrcode
-import io
-import base64
-from datetime import datetime, timedelta
-import json
+from flask_socketio import emit, join_room, leave_room
 from sqlalchemy import func
-from web import socketio
+from datetime import datetime, timedelta
 import qrcode
 import io
 import base64
-from flask import abort
-from flask import render_template, url_for
-from flask_login import login_required, current_user
-from flask import session
+from web import db, socketio
+from web.models import User, Feedback, Shopkeeper  # Fixed import
+from web.forms import FeedbackForm, PublicFeedbackForm
 
-
-#customer routes
-
-customer = Blueprint('customer', __name__)
-@customer.route('/customer/dashboard')
-@login_required
-def dashboard():
-    return render_template('customer_dashboard.html')
-
-
-#main routes
 main = Blueprint('main', __name__)
-@main.route('/')
-def homepage():
-    return render_template('homepage.html')
+customer = Blueprint('customer', __name__)
 
-from web.models import Item
-@main.route('/dashboard',methods=['GET', 'POST']) #added on 29
-@login_required
-def dashboard():
-    #
-    shopkeeper_id = session.get('shopkeeper_id')  # Or however you track login
-    all_recent_feedback = Feedback.query.join(Feedback.item).filter(
-        Item.shopkeeper_id == shopkeeper_id
-    ).order_by(Feedback.created_at.desc()).limit(10).all()
+class StatisticsService:
+    """Service for calculating shopkeeper statistics"""
+    
+    @staticmethod
+    def get_shopkeeper_stats(shopkeeper_id):
+        """Get comprehensive statistics for a shopkeeper"""
+        try:
+            shopkeeper = Shopkeeper.query.get(shopkeeper_id)
+            if not shopkeeper:
+                return None
+            
+            # Get all feedback for this shopkeeper
+            feedbacks = Feedback.query.filter_by(shopkeeper_id=shopkeeper_id).all()
+            
+            if not feedbacks:
+                return {
+                    'total_feedbacks': 0,
+                    'average_rating': 0,
+                    'rating_distribution': {1: 0, 2: 0, 3: 0, 4: 0, 5: 0},
+                    'recent_feedbacks': [],
+                    'satisfaction_rate': 0
+                }
+            
+            # Calculate statistics
+            total_feedbacks = len(feedbacks)
+            total_rating = sum(f.rating for f in feedbacks)
+            average_rating = total_rating / total_feedbacks if total_feedbacks > 0 else 0
+            
+            # Rating distribution
+            rating_distribution = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+            for feedback in feedbacks:
+                if 1 <= feedback.rating <= 5:  # Validate rating range
+                    rating_distribution[feedback.rating] += 1
+            
+            # Calculate satisfaction rate (4-5 stars)
+            satisfied_customers = sum(1 for f in feedbacks if f.rating >= 4)
+            satisfaction_rate = (satisfied_customers / total_feedbacks * 100) if total_feedbacks > 0 else 0
+            
+            # Get recent feedback (last 5)
+            recent_feedbacks = sorted(feedbacks, key=lambda x: x.created_at, reverse=True)[:5]
+            recent_feedback_data = []
+            
+            for feedback in recent_feedbacks:
+                recent_feedback_data.append({
+                    'id': feedback.id,
+                    'title': feedback.title,
+                    'content': feedback.content[:100] + '...' if len(feedback.content) > 100 else feedback.content,
+                    'rating': feedback.rating,
+                    'customer_name': feedback.customer_display_name,
+                    'created_at': feedback.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'time_ago': feedback.time_ago
+                })
+            
+            return {
+                'total_feedbacks': total_feedbacks,
+                'average_rating': round(average_rating, 2),
+                'rating_distribution': rating_distribution,
+                'recent_feedbacks': recent_feedback_data,
+                'satisfaction_rate': round(satisfaction_rate, 1)
+            }
+            
+        except Exception as e:
+            print(f"Error getting shopkeeper stats: {e}")
+            return {
+                'total_feedbacks': 0,
+                'average_rating': 0,
+                'rating_distribution': {1: 0, 2: 0, 3: 0, 4: 0, 5: 0},
+                'recent_feedbacks': [],
+                'satisfaction_rate': 0
+            }
+    
+    @staticmethod
+    def get_shopkeeper_feedback_query(shopkeeper_id):
+        """Get query object for shopkeeper's feedback"""
+        return Feedback.query.filter_by(shopkeeper_id=shopkeeper_id)
+    
+    @staticmethod
+    def get_feedback_trends(shopkeeper_id, days=30):
+        """Get feedback trends over time"""
+        try:
+            end_date = datetime.utcnow()
+            start_date = end_date - timedelta(days=days)
+            
+            feedbacks = Feedback.query.filter(
+                Feedback.shopkeeper_id == shopkeeper_id,
+                Feedback.created_at >= start_date,
+                Feedback.created_at <= end_date
+            ).all()
+            
+            # Group by day
+            daily_stats = {}
+            for feedback in feedbacks:
+                day = feedback.created_at.date()
+                if day not in daily_stats:
+                    daily_stats[day] = {'count': 0, 'total_rating': 0, 'average_rating': 0}
+                
+                daily_stats[day]['count'] += 1
+                daily_stats[day]['total_rating'] += feedback.rating
+            
+            # Calculate averages
+            for day in daily_stats:
+                daily_stats[day]['average_rating'] = daily_stats[day]['total_rating'] / daily_stats[day]['count']
+            
+            return daily_stats
+            
+        except Exception as e:
+            print(f"Error getting feedback trends: {e}")
+            return {}
+    
+    @staticmethod
+    def get_top_keywords(shopkeeper_id, limit=10):
+        """Get most common keywords from feedback content"""
+        try:
+            feedbacks = Feedback.query.filter_by(shopkeeper_id=shopkeeper_id).all()
+            
+            # Extract words from all feedback content
+            all_words = []
+            stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'was', 'are', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them', 'my', 'your', 'his', 'hers', 'its', 'our', 'their'}
+            
+            for feedback in feedbacks:
+                # Extract words (letters only, minimum 3 characters)
+                import re
+                words = re.findall(r'\b[a-zA-Z]{3,}\b', feedback.content.lower())
+                words.extend(re.findall(r'\b[a-zA-Z]{3,}\b', feedback.title.lower()))
+                
+                # Filter out stop words
+                words = [word for word in words if word not in stop_words]
+                all_words.extend(words)
+            
+            # Count word frequency
+            from collections import Counter
+            word_counts = Counter(all_words)
+            return word_counts.most_common(limit)
+            
+        except Exception as e:
+            print(f"Error getting top keywords: {e}")
+            return []
+    
+    @staticmethod
+    def _calculate_response_rate(total_feedback):
+        """Calculate response rate"""
+        expected_interactions = max(total_feedback * 4, 100)
+        
+        if expected_interactions > 0:
+            rate = round((total_feedback / expected_interactions) * 100)
+            return min(rate, 100)
+        return 0
 
-    # Load item feedbacks for each feedback
-    feedback_with_items = []
-    for feedback in all_recent_feedback:
-        item_feedbacks = ItemFeedback.query.filter_by(feedback_id=feedback.id).join(Item).all()
-        feedback_with_items.append({
-            'feedback': feedback,
-            'item_feedbacks': item_feedbacks
-        })
+
+class QRCodeService:
+    """Service class to handle QR code generation"""
     
+    @staticmethod
+    def generate_qr_code(data):
+        """Generate QR code and return as base64 string"""
+        try:
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(data)
+            qr.make(fit=True)
+            
+            img_buffer = io.BytesIO()
+            qr_img = qr.make_image(fill_color="black", back_color="white")
+            qr_img.save(img_buffer, format='PNG')
+            img_buffer.seek(0)
+            
+            return base64.b64encode(img_buffer.getvalue()).decode('utf-8')
+            
+        except Exception as e:
+            print(f"Error generating QR code: {e}")
+            return None
     
+    @staticmethod
+    def generate_qr_file(data):
+        """Generate QR code and return as file buffer"""
+        try:
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(data)
+            qr.make(fit=True)
+            
+            img_buffer = io.BytesIO()
+            qr_img = qr.make_image(fill_color="black", back_color="white")
+            qr_img.save(img_buffer, format='PNG')
+            img_buffer.seek(0)
+            
+            return img_buffer
+            
+        except Exception as e:
+            print(f"Error generating QR file: {e}")
+            return None
+
+
+class FeedbackService:
+    """Service class to handle feedback operations"""
     
-    
-    
-    
-    
-    ##
-    if not isinstance (current_user, Shopkeeper):
-        abort(403) 
-        # Add item logic
-    if request.method == 'POST':
-        item_name = request.form.get('item_name')
-        if item_name:
-            new_item = Item(name=item_name, shopkeeper_id=current_user.id)
-            db.session.add(new_item)
+    @staticmethod
+    def create_feedback(form_data, shopkeeper_id):
+        """Create a new feedback entry with proper validation"""
+        try:
+            # Validate shopkeeper exists and is active
+            shopkeeper = Shopkeeper.query.get(shopkeeper_id)
+            if not shopkeeper:
+                raise ValueError("Shopkeeper not found")
+            
+            if not shopkeeper.is_active:
+                raise ValueError("Shopkeeper account is inactive")
+            
+            # Create feedback with proper validation
+            feedback = Feedback(
+                title=form_data.get('title', '').strip(),
+                content=form_data.get('content', '').strip(),
+                rating=int(form_data.get('rating')),
+                customer_name=form_data.get('customer_name', '').strip() if form_data.get('customer_name') else None,
+                customer_email=form_data.get('customer_email', '').strip().lower() if form_data.get('customer_email') else None,
+                shopkeeper_id=shopkeeper_id
+            )
+            
+            db.session.add(feedback)
             db.session.commit()
-            flash(f'Item "{item_name}" added successfully!', 'success')
-        return redirect(url_for('main.dashboard'))
-
+            
+            return feedback
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error creating feedback: {e}")
+            raise e
     
-    items = Item.query.filter_by(shopkeeper_id=current_user.id).all()
-
-    feedback_query = Feedback.query.join(Feedback.item).filter(Item.shopkeeper_id == current_user.id)
-
-    recent_feedback = Feedback.query.filter_by(user_id=current_user.id)\
-                                  .order_by(Feedback.created_at.desc())\
-                                  .limit(5).all()
-    all_recent_feedback = feedback_query.order_by(Feedback.created_at.desc()).limit(10).all()
-    
-    total_feedback = Feedback.query.count()
-    
-    
-    avg_rating_result = db.session.query(func.avg(Feedback.rating)).scalar()
-    average_rating = round(avg_rating_result, 1) if avg_rating_result else 0.0
-    
-    # Get rating distribution
-    rating_distribution = get_rating_distribution()    
-    # Calculate some mock metrics for now (you can replace with real calculations)
-    active_customers = get_active_customers_count()
-    response_rate = calculate_response_rate()
-    
-    return render_template('dashboard.html', 
-                         recent_feedback=recent_feedback,
-                         total_feedback=total_feedback,
-                         average_rating=average_rating,
-                         rating_distribution=rating_distribution,
-                         active_customers=active_customers,
-                         response_rate=response_rate,
-                         all_recent_feedback=all_recent_feedback
-                         , items=items)#added on 29
-
-def get_rating_distribution():
-    """Get the distribution of ratings (1-5 stars)"""
-    total_feedback = Feedback.query.count()
-    if total_feedback == 0:
-        return {i: 0 for i in range(1, 6)}
-    
-    distribution = {}
-    for rating in range(1, 6):
-        count = Feedback.query.filter_by(rating=rating).count()
-        percentage = round((count / total_feedback) * 100) if total_feedback > 0 else 0
-        distribution[rating] = percentage
-    
-    return distribution
-
-def get_active_customers_count():
-    """Calculate active customers (unique feedback providers in last 30 days)"""
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-    
-    # Count unique customer names and emails from recent feedback
-    recent_feedback = Feedback.query.filter(Feedback.created_at >= thirty_days_ago).all()
-    unique_customers = set()
-    
-    for feedback in recent_feedback:
-        if feedback.customer_name:
-            unique_customers.add(feedback.customer_name.lower())
-        elif feedback.customer_email:
-            unique_customers.add(feedback.customer_email.lower())
-        elif feedback.user_id:
-            unique_customers.add(f"user_{feedback.user_id}")
-        else:
-            unique_customers.add("anonymous")
-    
-    return len(unique_customers)
-
-def calculate_response_rate():
-    """Calculate response rate (feedback received vs expected interactions)"""
-    #This is a simplified calculation - you might want to implement based on your business logic
-    total_feedback = Feedback.query.count()
-    # Assuming some base number of interactions (you can modify this logic)
-    expected_interactions = max(total_feedback * 4, 100)  # Simple assumption
-    
-    if expected_interactions > 0:
-        rate = round((total_feedback / expected_interactions) * 100)
-        return min(rate, 100)  # Cap at 100%
-    return 0
-
-@main.route('/api/dashboard-stats')
-@login_required
-def get_dashboard_stats():
-    """API endpoint to get updated dashboard statistics"""
-    total_feedback = Feedback.query.count()
-    
-    # Calculate average rating
-    avg_rating_result = db.session.query(func.avg(Feedback.rating)).scalar()
-    average_rating = round(avg_rating_result, 1) if avg_rating_result else 0.0
-    
-    # Get rating distribution
-    rating_distribution = get_rating_distribution()
-    
-    # Get other metrics
-    active_customers = get_active_customers_count()
-    response_rate = calculate_response_rate()
-    
-    return jsonify({
-        'total_feedback': total_feedback,
-        'average_rating': average_rating,
-        'rating_distribution': rating_distribution,
-        'active_customers': active_customers,
-        'response_rate': response_rate
-    })
-
-# Public feedback form (accessible without login)
-@main.route('/feedback/<username>', methods=['GET', 'POST'])
-def public_feedback(username):
-    form = PublicFeedbackForm()
-
-    # Get shopkeeper by username
-    shopkeeper = Shopkeeper.query.filter_by(username=username).first_or_404()
-    shopkeeper_id = shopkeeper.id
-
-    # Fetch items belonging to the shopkeeper
-    from web.models import Item
-    items = Item.query.filter_by(shopkeeper_id=shopkeeper_id).all()
-
-    # Assign items to form dropdown
-    form.items = items
-    form.item_id.choices = [(item.id, item.name) for item in items]
-
-    
-
-    is_valid=form.validate_on_submit()
-    print("Form submitted:", form.validate_on_submit())
-    print("Form errors:", form.errors)
-    if is_valid:
-        feedback = Feedback(
-            title=form.title.data,
-            content=form.content.data,
-            rating=int(form.rating.data),
-            customer_name=form.customer_name.data,
-            customer_email=form.customer_email.data,
-            user_id=None,
-            item_id=form.item_id.data,
-            #shopkeeper_id=shopkeeper_id
-        )
-
-        db.session.add(feedback)
-
-        #Save individual item ratings (if any)
-        for item in items:
-            rating_key = f'item_rating_{item.id}'
-            rating_value = request.form.get(rating_key)
-            if rating_value:
-                item_feedback = Feedback(
-                    title=form.title.data,
-                    content=form.content.data,
-                    rating=int(rating_value),
-                    customer_name=form.customer_name.data,
-                    customer_email=form.customer_email.data,
-                    item_id=item.id,
-                    user_id=None,
-                    #shopkeeper_id=shopkeeper_id
-                )
-                db.session.add(item_feedback)
-        # Commit all feedback to the database   
-        db.session.commit()
-
-        #Flash + socket + stats
-        
-
-    
-        
-        total_feedback = Feedback.query.count()
-        avg_rating_result = db.session.query(func.avg(Feedback.rating)).scalar()
-        average_rating = round(avg_rating_result, 1) if avg_rating_result else 0.0
-        rating_distribution = get_rating_distribution()
-        active_customers = get_active_customers_count()
-        response_rate = calculate_response_rate()
-
-        feedback_data = {
-            'id': feedback.id,
-            'title': feedback.title,
-            'content': feedback.content,
-            'rating': feedback.rating,
-            'customer_name': feedback.customer_name or 'Anonymous',
-            'created_at': feedback.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-            'time_ago': 'Just now',
-            'stats': {
-                'total_feedback': total_feedback,
-                'average_rating': average_rating,
-                'rating_distribution': rating_distribution,
-                'active_customers': active_customers,
-                'response_rate': response_rate
-            }
-        }
-
-        socketio.emit('new_feedback', feedback_data, room='dashboard_users')
-        
-        return redirect(url_for('main.feedback_success'))
-
-    return render_template('feedback/public_form.html', form=form, items=items, shopkeeper=shopkeeper)
-
-
-@main.route('/feedback/success')
-def feedback_success():
-    return render_template('feedback/success.html')
-
-# Private feedback form for logged-in users
-@main.route('/my-feedback', methods=['GET', 'POST'])
-@login_required
-def create_feedback():
-    form = FeedbackForm()
-    if form.validate_on_submit():
-        feedback = Feedback(
-            title=form.title.data,
-            content=form.content.data,
-            rating=int(form.rating.data),
-            user_id=current_user.id
-        )
-        db.session.add(feedback)
-        db.session.commit()
-        
-        # Get updated statistics after adding new feedback
-        total_feedback = Feedback.query.count()
-        avg_rating_result = db.session.query(func.avg(Feedback.rating)).scalar()
-        average_rating = round(avg_rating_result, 1) if avg_rating_result else 0.0
-        rating_distribution = get_rating_distribution()
-        active_customers = get_active_customers_count()
-        response_rate = calculate_response_rate()
-        
-        # Emit real-time update to all connected dashboard users
-        from web import socketio
-        feedback_data = {
-            'id': feedback.id,
-            'title': feedback.title,
-            'content': feedback.content,
-            'rating': feedback.rating,
-            'customer_name': current_user.full_name,
-            'created_at': feedback.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-            'time_ago': 'Just now',
-            # Include updated statistics
-            'stats': {
-                'total_feedback': total_feedback,
-                'average_rating': average_rating,
-                'rating_distribution': rating_distribution,
-                'active_customers': active_customers,
-                'response_rate': response_rate
-            }
-        }
-        socketio.emit('new_feedback', feedback_data, room='dashboard_users')
-        
-        flash('Feedback submitted successfully!', 'success')
-        return redirect(url_for('main.dashboard'))
-    
-    return render_template('feedback/create.html', form=form)
-
-# QR Code generation route
-@main.route('/generate-qr')
-@login_required
-def generate_qr():
-    # Get current user's username (e.g., a shopkeeper)
-    username = current_user.username
-    
-    # Generate full URL to public feedback page for that user
-    feedback_url = url_for('main.public_feedback', username=username, _external=True)
-
-    # Generate QR code
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(feedback_url)
-    qr.make(fit=True)
-
-    # Convert to base64 for HTML display
-    img_buffer = io.BytesIO()
-    qr_img = qr.make_image(fill_color="black", back_color="white")
-    qr_img.save(img_buffer, format='PNG')
-    img_buffer.seek(0)
-    img_base64 = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
-
-    return render_template('qr_code.html', qr_image=img_base64, feedback_url=feedback_url)
-
-# Route to download QR code as PNG
-@main.route('/download-qr')
-@login_required
-def download_qr():
-    from flask import make_response  # Ensure this import exists
-    import qrcode, io
-    from flask_login import current_user
-
-    # Use the logged-in user's username
-    username = current_user.username
-
-    # Full URL to the public feedback form for that shopkeeper
-    feedback_url = url_for('main.public_feedback', username=username, _external=True)
-
-    # Create QR code
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(feedback_url)
-    qr.make(fit=True)
-
-    # Save to BytesIO
-    img_buffer = io.BytesIO()
-    qr_img = qr.make_image(fill_color="black", back_color="white")
-    qr_img.save(img_buffer, format='PNG')
-    img_buffer.seek(0)
-
-    # Return image as file download
-    response = make_response(img_buffer.getvalue())
-    response.headers['Content-Type'] = 'image/png'
-    response.headers['Content-Disposition'] = 'attachment; filename=feedback_qr_code.png'
-
-    return response
-
-
-# Route to view all feedback (for admin/business owner)
-@main.route('/all-feedback')
-@login_required
-def view_all_feedback():
-    # Get all feedback (both from logged-in users and anonymous)
-    all_feedback = Feedback.query.order_by(Feedback.created_at.desc()).all()
-    
-    return render_template('feedback/all_feedback.html', feedback_list=all_feedback)
-
-# WebSocket event handlers
-def register_socketio_events(socketio):
-    @socketio.on('connect')
-    def handle_connect():
-        print(f'Client connected: {request.sid}')
-    
-    @socketio.on('disconnect')
-    def handle_disconnect():
-        print(f'Client disconnected: {request.sid}')
-    
-    @socketio.on('join_dashboard')
-    def handle_join_dashboard():
-        join_room('dashboard_users')
-        emit('status', {'msg': 'Connected to dashboard updates'})
-        print(f'Client {request.sid} joined dashboard room')
-    
-    @socketio.on('leave_dashboard')
-    def handle_leave_dashboard():
-        leave_room('dashboard_users')
-        emit('status', {'msg': 'Disconnected from dashboard updates'})
-        print(f'Client {request.sid} left dashboard room')
-    
-    @socketio.on('request_feedback_update')
-    def handle_feedback_update_request():
-        # Send latest feedback to the requesting client
-        latest_feedback = Feedback.query.order_by(Feedback.created_at.desc()).limit(10).all()
-        feedback_list = []
-        for feedback in latest_feedback:
+    @staticmethod
+    def broadcast_feedback_update(feedback, stats):
+        """Broadcast feedback update via WebSocket"""
+        try:
             feedback_data = {
                 'id': feedback.id,
                 'title': feedback.title,
                 'content': feedback.content,
                 'rating': feedback.rating,
-                'customer_name': feedback.customer_name or 'Anonymous',
+                'customer_name': feedback.customer_display_name,
                 'created_at': feedback.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                'time_ago': get_time_ago(feedback.created_at)
+                'time_ago': 'Just now',
+                'stats': stats
             }
-            feedback_list.append(feedback_data)
-        
-        emit('feedback_update', {'feedback_list': feedback_list})
+            
+            # Only emit if socketio is available and clients are connected
+            if socketio:
+                socketio.emit('new_feedback', feedback_data, room='dashboard_users')
+            
+        except Exception as e:
+            print(f"Error broadcasting feedback update: {e}")
+
 
 def get_time_ago(timestamp):
     """Calculate time ago string from timestamp"""
-    now = datetime.utcnow()
-    diff = now - timestamp
+    try:
+        now = datetime.utcnow()
+        diff = now - timestamp
+        
+        if diff.days > 0:
+            return f"{diff.days} day{'s' if diff.days != 1 else ''} ago"
+        elif diff.seconds > 3600:
+            hours = diff.seconds // 3600
+            return f"{hours} hour{'s' if hours != 1 else ''} ago"
+        elif diff.seconds > 60:
+            minutes = diff.seconds // 60
+            return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
+        else:
+            return "Just now"
+    except Exception as e:
+        print(f"Error calculating time ago: {e}")
+        return "Unknown"
+
+
+def require_shopkeeper(f):
+    """Decorator to ensure current user is a shopkeeper"""
+    def decorated_function(*args, **kwargs):
+        try:
+            if not current_user.is_authenticated:
+                flash('Please log in to access this page.', 'warning')
+                return redirect(url_for('auth.login'))
+            
+            # Check if the current user is actually a shopkeeper
+            shopkeeper = Shopkeeper.query.get(current_user.id)
+            if not shopkeeper:
+                # Check if they're a regular user
+                user = User.query.get(current_user.id)
+                if user:
+                    flash('Access denied. This page is for shopkeepers only.', 'danger')
+                    return redirect(url_for('customer.dashboard'))
+                else:
+                    flash('Account not found. Please contact support.', 'danger')
+                    return redirect(url_for('auth.login'))
+            
+            # Store shopkeeper info in session for later use
+            session['shopkeeper_id'] = shopkeeper.id
+            session['shopkeeper_username'] = shopkeeper.username
+            session['is_shopkeeper'] = True
+            
+            return f(*args, **kwargs)
+            
+        except Exception as e:
+            print(f"Error in require_shopkeeper decorator: {e}")
+            flash('An error occurred while verifying your account.', 'danger')
+            return redirect(url_for('auth.login'))
     
-    if diff.days > 0:
-        return f"{diff.days} day{'s' if diff.days != 1 else ''} ago"
-    elif diff.seconds > 3600:
-        hours = diff.seconds // 3600
-        return f"{hours} hour{'s' if hours != 1 else ''} ago"
-    elif diff.seconds > 60:
-        minutes = diff.seconds // 60
-        return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
-    else:
-        return "Just now"
+    decorated_function.__name__ = f.__name__
+    return decorated_function
+
+
+# ===============================
+# MAIN ROUTES
+# ===============================
+
+@main.route('/')
+def homepage():
+    """Homepage route"""
+    return render_template('homepage.html')
+
+@main.route('/dashboard', methods=['GET', 'POST'])
+@login_required
+@require_shopkeeper
+def dashboard():
+    """Shopkeeper dashboard - handles both GET and POST for adding items"""
+    try:
+        # Get the current shopkeeper (validated by decorator)
+        shopkeeper = Shopkeeper.query.get(current_user.id)
+        if not shopkeeper:
+            flash('Shopkeeper account not found.', 'danger')
+            return redirect(url_for('auth.login'))
+        
+        # Get recent feedback for this shopkeeper
+        recent_feedback = Feedback.query.filter_by(shopkeeper_id=shopkeeper.id)\
+                                       .order_by(Feedback.created_at.desc())\
+                                       .limit(10).all()
+        
+        # Get statistics
+        stats = StatisticsService.get_shopkeeper_stats(shopkeeper.id)
+        
+        if stats is None:
+            flash('Error loading dashboard statistics.', 'warning')
+            stats = {
+                'total_feedbacks': 0,
+                'average_rating': 0,
+                'rating_distribution': {1: 0, 2: 0, 3: 0, 4: 0, 5: 0},
+                'recent_feedbacks': [],
+                'satisfaction_rate': 0
+            }
+        return render_template('dashboard.html', 
+            all_recent_feedback=recent_feedback,  # ✅ Fix the variable name
+            shopkeeper=shopkeeper,
+            total_feedback=stats['total_feedbacks'],
+            average_rating=stats['average_rating'],
+            rating_distribution=stats['rating_distribution'],
+            response_rate=stats['satisfaction_rate'],
+)
+
+                             
+    except Exception as e:
+        print(f"Error loading dashboard: {e}")
+        flash('Error loading dashboard. Please try again.', 'danger')
+        return render_template('dashboard.html', 
+                             recent_feedback=[],
+                             shopkeeper=None,
+                             total_feedbacks=0,
+                             average_rating=0,
+                             rating_distribution={1: 0, 2: 0, 3: 0, 4: 0, 5: 0},
+                             recent_feedbacks=[],
+                             satisfaction_rate=0)
+
+@main.route('/api/dashboard-stats')
+@login_required
+@require_shopkeeper
+def get_dashboard_stats():
+    """API endpoint to get updated dashboard statistics"""
+    try:
+        # Get shopkeeper ID from session (set by decorator)
+        shopkeeper_id = session.get('shopkeeper_id')
+        if not shopkeeper_id:
+            return jsonify({'error': 'Shopkeeper ID not found in session'}), 400
+        
+        # Validate shopkeeper still exists
+        shopkeeper = Shopkeeper.query.get(shopkeeper_id)
+        if not shopkeeper:
+            return jsonify({'error': 'Shopkeeper not found'}), 404
+        
+        stats = StatisticsService.get_shopkeeper_stats(shopkeeper_id)
+        if stats is None:
+            return jsonify({'error': 'Unable to fetch statistics'}), 500
+        return jsonify(stats)
+    except Exception as e:
+        print(f"Error getting dashboard stats: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@main.route('/feedback/<username>', methods=['GET', 'POST'])
+def public_feedback(username):
+    """Public feedback form accessible without login"""
+    try:
+        # Get shopkeeper by username with proper validation
+        shopkeeper = Shopkeeper.query.filter_by(username=username).first()
+        if not shopkeeper:
+            flash('Shop not found.', 'danger')
+            abort(404)
+        
+        # Check if shopkeeper is active
+        if not shopkeeper.is_active:
+            flash('This shop is currently inactive.', 'warning')
+            abort(404)
+        
+        form = PublicFeedbackForm()
+        
+        if request.method == 'POST':
+            if form.validate_on_submit():
+                try:
+                    # Create feedback using the service with proper validation
+                    feedback = FeedbackService.create_feedback(
+                        form_data={
+                            'title': form.title.data,
+                            'content': form.content.data,
+                            'rating': form.rating.data,
+                            'customer_name': form.customer_name.data,
+                            'customer_email': form.customer_email.data
+                        },
+                        shopkeeper_id=shopkeeper.id
+                    )
+                    
+                    # Get updated statistics and broadcast
+                    stats = StatisticsService.get_shopkeeper_stats(shopkeeper.id)
+                    if stats:
+                        FeedbackService.broadcast_feedback_update(feedback, stats)
+                    
+                    flash('Thank you for your feedback!', 'success')
+                    return redirect(url_for('main.feedback_success'))
+                    
+                except ValueError as ve:
+                    flash(f'Validation error: {str(ve)}', 'danger')
+                except Exception as e:
+                    print(f"Error creating feedback: {e}")
+                    flash('Error submitting feedback. Please try again.', 'danger')
+            else:
+                # Display form errors
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        flash(f'{field}: {error}', 'danger')
+        
+        return render_template('feedback/public_form.html', 
+                             form=form, 
+                             shopkeeper=shopkeeper)
+                             
+    except Exception as e:
+        print(f"Error in public_feedback route: {e}")
+        flash('An error occurred. Please try again.', 'danger')
+        return redirect(url_for('main.homepage'))
+
+@main.route('/feedback/success')
+def feedback_success():
+    """Feedback submission success page"""
+    return render_template('feedback/success.html')
+
+# 1. Fix the create_feedback route for logged-in users
+@main.route('/my-feedback', methods=['GET', 'POST'])
+@login_required
+def create_feedback():
+    """Private feedback form for logged-in users"""
+    try:
+        form = FeedbackForm()
+        
+        # Get available shopkeepers for selection
+        shopkeepers = Shopkeeper.query.filter_by(is_active=True).all()
+        
+        if form.validate_on_submit():
+            try:
+                # Get shopkeeper_id from form data
+                shopkeeper_id = request.form.get('shopkeeper_id')
+                
+                if not shopkeeper_id:
+                    flash('Please select a shopkeeper.', 'danger')
+                    return render_template('feedback/create.html', form=form, shopkeepers=shopkeepers)
+                
+                # Validate shopkeeper exists
+                shopkeeper = Shopkeeper.query.get(int(shopkeeper_id))
+                if not shopkeeper:
+                    flash('Selected shopkeeper not found.', 'danger')
+                    return render_template('feedback/create.html', form=form, shopkeepers=shopkeepers)
+                
+                # Create feedback using the service
+                feedback = FeedbackService.create_feedback(
+                    form_data={
+                        'title': form.title.data,
+                        'content': form.content.data,
+                        'rating': form.rating.data,
+                        'customer_name': current_user.full_name,
+                        'customer_email': current_user.email
+                    },
+                    shopkeeper_id=int(shopkeeper_id),
+                )
+                
+                # Get updated statistics and broadcast
+                stats = StatisticsService.get_shopkeeper_stats(int(shopkeeper_id))
+                if stats:
+                    FeedbackService.broadcast_feedback_update(feedback, stats)
+                
+                flash('Feedback submitted successfully!', 'success')
+                return redirect(url_for('customer.dashboard'))
+                
+            except ValueError as ve:
+                flash(f'Validation error: {str(ve)}', 'danger')
+            except Exception as e:
+                print(f"Error creating feedback: {e}")
+                flash('Error submitting feedback. Please try again.', 'danger')
+        
+        return render_template('feedback/create.html', form=form, shopkeepers=shopkeepers)
+        
+    except Exception as e:
+        print(f"Error in create_feedback route: {e}")
+        flash('An error occurred. Please try again.', 'danger')
+        return redirect(url_for('customer.dashboard'))
+
+
+@main.route('/generate-qr')
+@login_required
+@require_shopkeeper
+def generate_qr():
+    """Generate QR code for shopkeeper's feedback form"""
+    try:
+        shopkeeper = Shopkeeper.query.filter_by(id=current_user.id).first()
+        if not shopkeeper or not shopkeeper.username:
+            flash('Username not found. Please contact support.', 'danger')
+            return redirect(url_for('main.dashboard'))
+        
+        feedback_url = url_for('main.public_feedback', 
+                              username=shopkeeper.username, 
+                              _external=True)
+        
+        qr_image = QRCodeService.generate_qr_code(feedback_url)
+        
+        if qr_image is None:
+            flash('Error generating QR code. Please try again.', 'danger')
+            return redirect(url_for('main.dashboard'))
+        
+        return render_template('qr_code.html', 
+                             qr_image=qr_image, 
+                             feedback_url=feedback_url)
+                             
+    except Exception as e:
+        print(f"Error generating QR code: {e}")
+        flash('Error generating QR code. Please try again.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+
+@main.route('/download-qr')
+@login_required
+@require_shopkeeper
+def download_qr():
+    """Download QR code as PNG file"""
+    try:
+        shopkeeper = Shopkeeper.query.filter_by(id=current_user.id).first()
+        if not shopkeeper or not shopkeeper.username:
+            flash('Username not found. Please contact support.', 'danger')
+            return redirect(url_for('main.dashboard'))
+        
+        feedback_url = url_for('main.public_feedback', 
+                              username=shopkeeper.username, 
+                              _external=True)
+        
+        img_buffer = QRCodeService.generate_qr_file(feedback_url)
+        
+        if img_buffer is None:
+            flash('Error generating QR code file. Please try again.', 'danger')
+            return redirect(url_for('main.dashboard'))
+        
+        response = make_response(img_buffer.getvalue())
+        response.headers['Content-Type'] = 'image/png'
+        response.headers['Content-Disposition'] = 'attachment; filename=feedback_qr_code.png'
+        
+        return response
+        
+    except Exception as e:
+        print(f"Error downloading QR code: {e}")
+        flash('Error downloading QR code. Please try again.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+
+@main.route('/dashboard/my-feedback')
+@login_required
+@require_shopkeeper
+def my_feedback_dashboard():
+    """Dashboard for shopkeeper to view their feedback"""
+    try:
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = 10
+        
+        # Get feedback with pagination
+        feedbacks = Feedback.query.filter_by(shopkeeper_id=current_user.id)\
+                                 .order_by(Feedback.created_at.desc())\
+                                 .paginate(page=page, per_page=per_page, error_out=False)
+        
+        # Get statistics
+        stats = StatisticsService.get_shopkeeper_stats(current_user.id)
+        if stats is None:
+            stats = {
+                'total_feedbacks': 0,
+                'average_rating': 0,
+                'rating_distribution': {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+            }
+        return render_template('feedback/all_feedback.html', 
+                       feedback_list=feedbacks.items,
+                       stats=stats)
+                             
+    except Exception as e:
+        print(f"Error loading feedback dashboard: {e}")
+        flash('Error loading feedback dashboard. Please try again.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+
+@customer.route('/customer/dashboard')
+@login_required
+def dashboard():
+    """Customer dashboard"""
+    try:
+        return render_template('customer_dashboard.html')
+    except Exception as e:
+        print(f"Error loading customer dashboard: {e}")
+        flash('Error loading dashboard. Please try again.', 'danger')
+        return redirect(url_for('main.homepage'))
+
+
+# ===============================
+# WEBSOCKET EVENT HANDLERS
+# ===============================
+
+def register_socketio_events(socketio):
+    """Register WebSocket event handlers"""
+    
+    @socketio.on('connect')
+    def handle_connect():
+        try:
+            print(f'Client connected: {request.sid}')
+        except Exception as e:
+            print(f'Error handling connect: {e}')
+    
+    @socketio.on('disconnect')
+    def handle_disconnect():
+        try:
+            print(f'Client disconnected: {request.sid}')
+        except Exception as e:
+            print(f'Error handling disconnect: {e}')
+    
+    @socketio.on('join_dashboard')
+    def handle_join_dashboard():
+        try:
+            join_room('dashboard_users')
+            emit('status', {'msg': 'Connected to dashboard updates'})
+            print(f'Client {request.sid} joined dashboard room')
+        except Exception as e:
+            print(f'Error joining dashboard room: {e}')
+            emit('error', {'msg': 'Failed to join dashboard updates'})
+    
+    @socketio.on('leave_dashboard')
+    def handle_leave_dashboard():
+        try:
+            leave_room('dashboard_users')
+            emit('status', {'msg': 'Disconnected from dashboard updates'})
+            print(f'Client {request.sid} left dashboard room')
+        except Exception as e:
+            print(f'Error leaving dashboard room: {e}')
+    
+    @socketio.on('request_feedback_update')
+    def handle_feedback_update_request():
+        """Send latest feedback to requesting client"""
+        try:
+            # Get shopkeeper ID from session or request
+            shopkeeper_id = session.get('shopkeeper_id')
+            if not shopkeeper_id:
+                emit('error', {'msg': 'No shopkeeper ID found'})
+                return
+            
+            latest_feedback = Feedback.query.filter_by(shopkeeper_id=shopkeeper_id)\
+                                          .order_by(Feedback.created_at.desc())\
+                                          .limit(10).all()
+            
+            feedback_list = []
+            for feedback in latest_feedback:
+                feedback_data = {
+                    'id': feedback.id,
+                    'title': feedback.title,
+                    'content': feedback.content,
+                    'rating': feedback.rating,
+                    'customer_name': feedback.customer_display_name,
+                    'created_at': feedback.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'time_ago': feedback.time_ago
+                }
+                feedback_list.append(feedback_data)
+            
+            emit('feedback_update', {'feedback_list': feedback_list})
+            
+        except Exception as e:
+            print(f"Error in feedback update request: {e}")
+            emit('error', {'msg': 'Failed to fetch feedback updates'})

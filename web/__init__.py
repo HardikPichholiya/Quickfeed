@@ -10,8 +10,8 @@ socketio = SocketIO()
 
 def create_app():
     app = Flask(__name__)
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'your-secret-key-here'
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///quickfeed.db'
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL','sqlite:///quickfeed.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
     # Initialize extensions with app
@@ -26,17 +26,22 @@ def create_app():
     
     @login_manager.user_loader
     def load_user(user_id):
-        from web.models import User , Shopkeeper
-        return User.query.get(int(user_id)) or  Shopkeeper.query.get(int(user_id))
+        from web.models import User, Shopkeeper
+        user = User.query.get(int(user_id))
+        if user:
+            return user
+        shopkeeper = Shopkeeper.query.get(int(user_id))
+        if shopkeeper:
+            return shopkeeper
+        return None
     
     # Register blueprints
-    from web.routes import main
     from web.auth import auth
-    from web.routes import customer
-    app.register_blueprint(customer)
-
-    app.register_blueprint(main)
+    from web.routes import main, customer
+    
     app.register_blueprint(auth, url_prefix='/auth')
+    app.register_blueprint(main)
+    app.register_blueprint(customer)
     
     # Register SocketIO events
     from web.routes import register_socketio_events

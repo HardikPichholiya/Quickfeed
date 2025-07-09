@@ -12,11 +12,11 @@ auth = Blueprint('auth', __name__, url_prefix='/auth')
 
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
-    #if current_user.is_authenticated:
-     #   if isinstance(current_user, Shopkeeper):
-     #       return redirect(url_for('main.dashboard'))
-     #   elif isinstance(current_user, User):
-     #       return redirect(url_for('customer.dashboard'))
+    if current_user.is_authenticated:
+       if isinstance(current_user, Shopkeeper):
+           return redirect(url_for('main.dashboard'))
+       elif isinstance(current_user, User):
+           return redirect(url_for('customer.dashboard'))
 
     
     form = LoginForm()
@@ -26,14 +26,14 @@ def login():
         shopkeeper = Shopkeeper.query.filter_by(email=form.email.data).first()
 
         if shopkeeper and check_password_hash(shopkeeper.password_hash, form.password.data):
-            login_user(shopkeeper, remember=form.remember_me.data)
-            session['shopname'] = shopkeeper.shopname   # ✅ Store shopname in session
+            session['shop_name'] = shopkeeper.shopname   # ✅ Store shopname in session
+            login_user(shopkeeper)
             flash('Shopkeeper login successful!', 'success')
             return redirect(url_for('main.dashboard'))
 
         elif customer and check_password_hash(customer.password_hash, form.password.data):
-            login_user(customer, remember=form.remember_me.data)
-            session.pop('shopname', None)
+            session.pop('shop_name', None)
+            login_user(customer)
             flash('Customer login successful!', 'success')
             return redirect(url_for('customer.dashboard'))
 
@@ -89,7 +89,7 @@ def signupshop():
         user = Shopkeeper(
             first_name=form.first_name.data,
             last_name=form.last_name.data,
-            shopname=form.shopname.data,
+            shopname=form.shop_name.data,
             username=form.username.data,
             email=form.email.data,
             password_hash=generate_password_hash(form.password.data)

@@ -60,32 +60,6 @@
                 {% endif %}
             </div>
 
-<!--added on 29-->
-<div>
-  {{ form.item_id.label }}
-  {{ form.item_id(class="form-control") }}
-</div>
-
-<p>Items received: {{ items|length }}</p>
-
-<h3 class="form-label">Rate Individual Items:</h3>
-{% for item in items %}
-    <div class="form-group">
-        <label for="item_rating_{{ item.id }}">{{ item.name }}</label>
-        <select name="item_rating_{{ item.id }}" id="item_rating_{{ item.id }}" class="form-select" >
-            <option value="">Rate this item</option>
-            <option value="5">⭐⭐⭐⭐⭐ Excellent</option>
-            <option value="4">⭐⭐⭐⭐ Good</option>
-            <option value="3">⭐⭐⭐ Average</option>
-            <option value="2">⭐⭐ Poor</option>
-            <option value="1">⭐ Terrible</option>
-        </select>
-    </div>
-{% endfor %}
-
-<!--end of added on 29-->
-
-
             <div class="form-group">
                 {{ form.rating.label(class="form-label") }}
                 {{ form.rating(class="form-select") }}

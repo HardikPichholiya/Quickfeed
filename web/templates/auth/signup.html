@@ -55,20 +55,11 @@
                     <div class="error-message">{{ form.confirm_password.errors[0] }}</div>
                 {% endif %}
             </div>
-            
-            <div class="form-group">
-                <label class="checkbox-container">
-                    {{ form.terms() }}
-                    <span class="checkmark"></span>
-                    I agree to the <a href="#"id="Terms of Service" class="auth-link">Terms of Service</a> and <a href="#" id="Privacy Policy" class="auth-link">Privacy Policy</a>
-                </label>
-            </div>
-            
             {{ form.submit(class="btn-primary btn-full") }}
         </form>
         
         <div class="auth-footer">
-            <p>Already have an account? <a href="{{ url_for('auth.login') }}" class="auth-link">Sign in</a></p>
+            <p>Already have an account? <a href="{{ url_for('auth.login') }}" class="auth-link">Login</a></p>
         </div>
     </div>
     
