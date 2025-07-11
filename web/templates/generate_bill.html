@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Generate Bill - Quickfeed{% endblock %}
+
+{% block content %}
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div class="sidebar-logo">
+            <h2>Quickfeed</h2>
+        </div>
+        <button class="close-btn" onclick="toggleSidebar()">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <nav class="sidebar-nav">
+        <ul>
+            <li><a href="#" class="nav-link"><i class="fas fa-home"></i><span>Dashboard</span></a></li>
+            <li><a href="/dashboard/my-feedback" class="nav-link"><i class="fas fa-comment-dots"></i><span>All Feedback</span></a></li>
+            <li><a href="#" id="analytics" class="nav-link"><i class="fas fa-chart-line"></i><span>Analytics</span></a></li>
+            <li class="active"><a href="/dashboard/generate-bill" class="nav-link"><i class="fas fa-receipt"></i><span>Billing</span></a></li>
+            <li><a href="/dashboard/item-setup" class="nav-link"><i class="fas fa-cog"></i><span>Setup</span></a></li>
+            <li class="logout-item"><a href="/auth/logout" class="nav-link logout-link"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a></li>
+        </ul>
+    </nav>
+</div>
+
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<div class="main-content">
+    <header class="header">
+        <div class="header-left">
+            <div class="menu-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="brand-logo">
+                <h1>Quickfeed</h1>
+                <span class="brand-tagline">Real-time feedback, real-time growth</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="setup-container">
+        <h1 class="setup-title">🧾 Generate Bill</h1>
+        <p class="setup-subtitle">Select items and quantities to generate a bill.</p>
+
+        <form id="billForm" class="item-form">
+            <div class="item-list">
+                {% if items %}
+                    {% for item in items %}
+                    <div class="item-card">
+                        <div class="item-info">
+                            <div class="form-group" style="margin-bottom: 0; display: flex; align-items: center;">
+                                <input type="checkbox" class="form-check-input me-2" id="item_{{ item.id }}" name="item_{{ item.id }}" onchange="toggleQty({{ item.id }})" style="margin-right: 10px;">
+                                <label class="form-check-label item-label" for="item_{{ item.id }}" style="margin-right: auto;">
+                                    <div class="item-name">{{ item.name }}</div>
+                                    <div class="item-price">₹{{ '%.2f'|format(item.price) }}</div>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="qty_{{ item.id }}" style="font-size: 12px; margin-bottom: 5px;">Qty</label>
+                            <input type="number" name="qty_{{ item.id }}" id="qty_{{ item.id }}" class="form-control qty-input" min="1" value="1" disabled style="width: 80px;">
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <p>No items found. Add some items first.</p>
+                    </div>
+                {% endif %}
+            </div>
+            
+            {% if items %}
+            <div style="margin-top: 20px; display: flex; gap: 10px;">
+                <button type="submit" class="btn-add">Generate Bill</button>
+                <a href="{{ url_for('main.item_setup') }}" class="btn-delete" style="text-decoration: none; display: inline-block; text-align: center; padding: 10px 20px;">Add Items</a>
+            </div>
+            {% endif %}
+        </form>
+
+        <div id="bill-result" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('active');
+        document.getElementById('sidebarOverlay').classList.toggle('active');
+    }
+
+    document.addEventListener('click', function(event) {
+        const sidebar = document.getElementById('sidebar');
+        const menuToggle = document.querySelector('.menu-toggle');
+        if (!sidebar.contains(event.target) && !menuToggle.contains(event.target)) {
+            sidebar.classList.remove('active');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const menuToggle = document.querySelector('.menu-toggle');
+        if (menuToggle) {
+            menuToggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                window.location.href = '/dashboard';
+            });
+        }
+
+        // Form submit handler with robust error reporting
+        document.getElementById('billForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const form = this;
+            const formData = new FormData(form);
+
+            fetch("{{ url_for('main.generate_bill') }}", {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        alert("You are not logged in. Please log in and try again.");
+                        window.location.href = "/auth/login";
+                        return;
+                    }
+                    return response.text().then(text => {
+                        console.error("Error from server:", text);
+                        throw new Error("Server responded with error");
+                    });
+                }
+                return response.text();
+            })
+            .then(html => {
+                document.getElementById('bill-result').innerHTML = html;
+            })
+            .catch(error => {
+                console.error("Fetch failed:", error);
+                alert("Something went wrong while generating the bill.");
+            });
+        });
+    });
+
+    function toggleQty(itemId) {
+        const checkbox = document.getElementById('item_' + itemId);
+        const qtyInput = document.getElementById('qty_' + itemId);
+        qtyInput.disabled = !checkbox.checked;
+    }
+    </script>
+</div>
+{% endblock %}

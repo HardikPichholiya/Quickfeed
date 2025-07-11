@@ -6,8 +6,6 @@ from web.models import  User ,Shopkeeper
 from web.forms import LoginForm, SignupForm ,ShopkeeperSignupForm
 from flask import session
 
-
-
 auth = Blueprint('auth', __name__, url_prefix='/auth')
 
 @auth.route('/login', methods=['GET', 'POST'])
@@ -18,7 +16,6 @@ def login():
        elif isinstance(current_user, User):
            return redirect(url_for('customer.dashboard'))
 
-    
     form = LoginForm()
     if form.validate_on_submit():
         # Check if the user is a shopkeeper or a customer
@@ -71,11 +68,10 @@ def signup():
     
     return render_template('auth/signup.html', form=form)
 
-
 @auth.route('/signupshop', methods=['GET', 'POST'])
 def signupshop():
     if current_user.is_authenticated:
-        return redirect(url_for('main.dashboard'))
+        return redirect(url_for('auth.login'))
     
     form = ShopkeeperSignupForm()
     if form.validate_on_submit():
@@ -102,7 +98,6 @@ def signupshop():
         return redirect(url_for('auth.login'))
     
     return render_template('auth/signupshop.html', form=form)
-
 
 @auth.route('/logout')
 @login_required

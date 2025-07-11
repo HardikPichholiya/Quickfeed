@@ -63,9 +63,9 @@
         <!-- Header -->
         <header class="header">
             <div class="header-left">
-                <div class="menu-toggle" onclick="toggleSidebar()">
+                <a href="/dashboard" class="menu-toggle">
                     <i class="fas fa-user"></i>
-                </div>
+                </a>
                 <div class="brand-logo">
                     <h1>Quickfeed</h1>
                     <span class="brand-tagline">Real-time feedback, real-time growth</span>
@@ -165,7 +165,7 @@
             </a>
         </div>
         <script>
-                    // Sidebar functionality
+        // Sidebar functionality
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebarOverlay');
@@ -174,14 +174,20 @@
             overlay.classList.toggle('active');
         }
 
-        // Close sidebar when clicking outside
-        document.addEventListener('click', function(event) {
-            const sidebar = document.getElementById('sidebar');
+        // Redirect to dashboard when clicking profile icon
+        function redirectToDashboard() {
+            console.log('Redirecting to dashboard...'); // Debug log
+            window.location.href = '/dashboard';
+        }
+        // Alternative approach - Add event listener directly
+        document.addEventListener('DOMContentLoaded', function() {
             const menuToggle = document.querySelector('.menu-toggle');
-            
-            if (!sidebar.contains(event.target) && !menuToggle.contains(event.target)) {
-                sidebar.classList.remove('active');
-                document.getElementById('sidebarOverlay').classList.remove('active');
+            if (menuToggle) {
+                menuToggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('Menu toggle clicked!'); // Debug log
+                    window.location.href = '/dashboard';
+                });
             }
         });
         </script>

@@ -17,10 +17,8 @@
             <h1>We'd Love Your Feedback!</h1>
             <p>Help us improve by sharing your experience</p>
         </div>
-
         <form method="POST" class="feedback-form">
             {{ form.hidden_tag() }}
-            
             <!-- Flash Messages -->
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}

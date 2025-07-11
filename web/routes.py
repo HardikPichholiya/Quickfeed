@@ -7,7 +7,7 @@ import qrcode
 import io
 import base64
 from web import db, socketio
-from web.models import User, Feedback, Shopkeeper  # Fixed import
+from web.models import User, Feedback, Shopkeeper , Item, Bill
 from web.forms import FeedbackForm, PublicFeedbackForm
 
 main = Blueprint('main', __name__)
@@ -121,35 +121,6 @@ class StatisticsService:
         except Exception as e:
             print(f"Error getting feedback trends: {e}")
             return {}
-    
-    @staticmethod
-    def get_top_keywords(shopkeeper_id, limit=10):
-        """Get most common keywords from feedback content"""
-        try:
-            feedbacks = Feedback.query.filter_by(shopkeeper_id=shopkeeper_id).all()
-            
-            # Extract words from all feedback content
-            all_words = []
-            stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'was', 'are', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them', 'my', 'your', 'his', 'hers', 'its', 'our', 'their'}
-            
-            for feedback in feedbacks:
-                # Extract words (letters only, minimum 3 characters)
-                import re
-                words = re.findall(r'\b[a-zA-Z]{3,}\b', feedback.content.lower())
-                words.extend(re.findall(r'\b[a-zA-Z]{3,}\b', feedback.title.lower()))
-                
-                # Filter out stop words
-                words = [word for word in words if word not in stop_words]
-                all_words.extend(words)
-            
-            # Count word frequency
-            from collections import Counter
-            word_counts = Counter(all_words)
-            return word_counts.most_common(limit)
-            
-        except Exception as e:
-            print(f"Error getting top keywords: {e}")
-            return []
     
     @staticmethod
     def _calculate_response_rate(total_feedback):
@@ -472,6 +443,147 @@ def public_feedback(username):
         print(f"Error in public_feedback route: {e}")
         flash('An error occurred. Please try again.', 'danger')
         return redirect(url_for('main.homepage'))
+from flask import request, jsonify, render_template
+
+@main.route('/dashboard/generate-bill', methods=['GET', 'POST'])
+@login_required
+@require_shopkeeper
+def generate_bill():
+    items = Item.query.filter_by(shopkeeper_id=current_user.id).all()
+
+    if request.method == 'GET':
+        return render_template('generate_bill.html', items=items)
+
+    # POST method - handle bill generation
+    selected_items = []
+    total_price = 0
+
+    for item in items:
+        if request.form.get(f'item_{item.id}'):
+            try:
+                qty = int(request.form.get(f'qty_{item.id}', 1))
+                if qty < 1:
+                    raise ValueError("Quantity must be at least 1")
+            except ValueError:
+                qty = 1  # Default to 1 if invalid
+            item_total = qty * item.price
+            total_price += item_total
+            selected_items.append({
+                'item': item,
+                'quantity': qty,
+                'item_total': item_total
+            })
+
+    from datetime import datetime
+    from web.models import Bill
+
+    bill = Bill(
+        customer_id=None,
+        shopkeeper_id=current_user.id,
+        total_price=total_price
+    )
+
+    db.session.add(bill)
+    db.session.commit()
+
+    # ✅ AJAX: Return partial template
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render_template(
+            'partials/bill_snippet.html',
+            selected_items=selected_items,
+            total_price=total_price,
+            now=datetime.now
+        )
+
+    # Fallback: Redirect to bill page
+    return redirect(url_for('main.generate_bill'))
+
+
+@main.route('/dashboard/item-setup', methods=['GET'])
+@login_required
+@require_shopkeeper
+def item_setup():
+    items = Item.query.filter_by(shopkeeper_id=current_user.id).all()
+    return render_template('setup.html', items=items)
+
+@main.route('/dashboard/item-setup', methods=['POST'])
+@login_required
+@require_shopkeeper
+def add_item():
+    """Add a new item to the shopkeeper's list"""
+    try:
+        name = request.form.get('name')
+        price = float(request.form.get('price'))
+        shopkeeper_id = current_user.id
+
+        if not name or price < 0:
+            flash("Invalid item data.", "warning")
+            return redirect(url_for('main.item_setup'))
+
+        new_item = Item(name=name.strip(), price=price, shopkeeper_id=shopkeeper_id)
+        db.session.add(new_item)
+        db.session.commit()
+
+        flash("Item added successfully!", "success")
+        return redirect(url_for('main.item_setup'))
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error adding item: {e}")
+        flash("Failed to add item.", "danger")
+        return redirect(url_for('main.item_setup'))
+
+@main.route('/dashboard/delete-item/<int:item_id>', methods=['POST'])
+@login_required
+@require_shopkeeper
+def delete_item(item_id):
+    """Delete an item from the shopkeeper's list"""
+    try:
+        item = Item.query.get(item_id)
+        if item and item.shopkeeper_id == current_user.id:
+            db.session.delete(item)
+            db.session.commit()
+            flash("Item deleted successfully!", "success")
+        else:
+            flash("Item not found or unauthorized.", "danger")
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting item: {e}")
+        flash("Failed to delete item.", "danger")
+    return redirect(url_for('main.item_setup'))
+    
+@main.route('/submit-feedback', methods=['POST'])
+@login_required
+def submit_feedback():
+    rating = int(request.form.get('rating'))
+    feedback_text = request.form.get('feedback_text')
+    bill_id = request.form.get('bill_id')  # This must be sent with form
+    customer_id = current_user.id
+
+    bill = Bill.query.get_or_404(bill_id)
+    shopkeeper = Shopkeeper.query.get_or_404(bill.shopkeeper_id)
+
+    # Save feedback
+    feedback = Feedback(
+        rating=rating,
+        text=feedback_text,
+        customer_id=customer_id,
+        bill_id=bill.id
+    )
+    db.session.add(feedback)
+
+    # Loyalty logic
+    if (
+        bill.total_amount >= shopkeeper.minimum_spend_threshold and
+        rating >= 4 and
+        len(feedback_text.strip().split()) > 20
+    ):
+        if bill.loyalty_code is None:
+            from web.utils import generate_unique_loyalty_code
+            bill.loyalty_code = generate_unique_loyalty_code()
+
+    db.session.commit()
+    return redirect(url_for('main.feedback_success'))
 
 @main.route('/feedback/success')
 def feedback_success():
@@ -536,7 +648,6 @@ def create_feedback():
         print(f"Error in create_feedback route: {e}")
         flash('An error occurred. Please try again.', 'danger')
         return redirect(url_for('customer.dashboard'))
-
 
 @main.route('/generate-qr')
 @login_required
@@ -633,7 +744,7 @@ def my_feedback_dashboard():
         print(f"Error loading feedback dashboard: {e}")
         flash('Error loading feedback dashboard. Please try again.', 'danger')
         return redirect(url_for('main.dashboard'))
-
+    
 
 @customer.route('/customer/dashboard')
 @login_required

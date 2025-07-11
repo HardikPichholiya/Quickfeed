@@ -40,13 +40,7 @@ class BaseUser(UserMixin, db.Model):
 
 class User(BaseUser):
     """Regular customer users who can give feedback."""
-    __tablename__ = 'users'  # Changed from 'user' to 'users' for consistency
-    
-    # Add relationship to feedback with proper foreign key handling
-    # feedbacks = db.relationship('Feedback',
-    #                            backref='user',
-    #                            lazy='dynamic',
-    #                            cascade='all, delete-orphan')
+    __tablename__ = 'users'  
     
     def get_feedback_count(self):
         """Get total number of feedbacks given by this user"""
@@ -125,7 +119,39 @@ class Shopkeeper(BaseUser):
     def get_recent_feedback(self, limit=10):
         """Get recent feedback for this shopkeeper"""
         return self.received_feedbacks.order_by(Feedback.created_at.desc()).limit(limit).all()
+class Item(db.Model):
+    __tablename__ = 'items'
 
+    id = db.Column(db.Integer, primary_key=True)
+    shopkeeper_id = db.Column(db.Integer, db.ForeignKey('shopkeepers.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    shopkeeper = db.relationship('Shopkeeper', backref=db.backref('items', lazy=True))
+
+class Bill(db.Model):
+    __tablename__ = 'bills'
+
+    id = db.Column(db.Integer, primary_key=True)
+    shopkeeper_id = db.Column(db.Integer, db.ForeignKey('shopkeepers.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    total_price = db.Column(db.Float, nullable=False)
+    loyalty_code = db.Column(db.String(4), unique=True, nullable=True)
+    loyalty_used = db.Column(db.Boolean, default=False)
+    loyalty_points_earned = db.Column(db.Integer, default=0)
+    shopkeeper = db.relationship('Shopkeeper', backref=db.backref('bills', lazy=True))
+
+
+class BillItem(db.Model):
+    __tablename__ = 'bill_items'
+
+    id = db.Column(db.Integer, primary_key=True)
+    bill_id = db.Column(db.Integer, db.ForeignKey('bills.id'), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey('items.id'), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    price_per_unit = db.Column(db.Float, nullable=False)
+
+    bill = db.relationship('Bill', backref=db.backref('bill_items', lazy=True))
+    item = db.relationship('Item', backref=db.backref('bill_items', lazy=True))
 
 class Feedback(db.Model):
     """Feedback given by users to shopkeepers."""

@@ -1,0 +1,25 @@
+<div class="receipt">
+    <h4 class="receipt-title">🧾 Bill Receipt</h4>
+
+    {% for entry in selected_items %}
+        <div class="receipt-item">
+            <div class="receipt-item-info">
+                <div class="item-name">{{ entry.item.name }} (x{{ entry.quantity }})</div>
+                <div class="item-price">₹{{ "%.2f"|format(entry.item_total) }}</div>
+            </div>
+        </div>
+    {% endfor %}
+
+    <div class="receipt-total">
+        <div class="receipt-total-info">
+            <div class="total-label"><strong>Total:</strong></div>
+            <div class="total-price"><strong>₹{{ "%.2f"|format(total_price) }}</strong></div>
+        </div>
+    </div>
+
+    
+
+    <div class="receipt-footer">
+        <em>Generated on {{ now().strftime('%d %B %Y, %I:%M %p') }}</em>
+    </div>
+</div>
