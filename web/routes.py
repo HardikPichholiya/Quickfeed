@@ -466,6 +466,7 @@ def generate_bill():
                     raise ValueError("Quantity must be at least 1")
             except ValueError:
                 qty = 1  # Default to 1 if invalid
+            
             item_total = qty * item.price
             total_price += item_total
             selected_items.append({
@@ -474,16 +475,35 @@ def generate_bill():
                 'item_total': item_total
             })
 
-    from datetime import datetime
-    from web.models import Bill
+    # Check if any items were selected
+    if not selected_items:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return '<div class="alert alert-warning">Please select at least one item to generate a bill.</div>', 400
+        else:
+            flash('Please select at least one item to generate a bill.', 'warning')
+            return redirect(url_for('main.generate_bill'))
 
+    from datetime import datetime
+    from web.models import Bill, BillItem
+
+    # Create the bill
     bill = Bill(
-        customer_id=None,
         shopkeeper_id=current_user.id,
         total_price=total_price
     )
-
     db.session.add(bill)
+    db.session.flush()  # To get the bill ID
+
+    # Create bill items
+    for item_data in selected_items:
+        bill_item = BillItem(
+            bill_id=bill.id,
+            item_id=item_data['item'].id,
+            quantity=item_data['quantity'],
+            price_per_unit=item_data['item'].price
+        )
+        db.session.add(bill_item)
+
     db.session.commit()
 
     # ✅ AJAX: Return partial template
@@ -492,6 +512,7 @@ def generate_bill():
             'partials/bill_snippet.html',
             selected_items=selected_items,
             total_price=total_price,
+            bill=bill,
             now=datetime.now
         )
 

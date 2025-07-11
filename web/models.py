@@ -119,6 +119,7 @@ class Shopkeeper(BaseUser):
     def get_recent_feedback(self, limit=10):
         """Get recent feedback for this shopkeeper"""
         return self.received_feedbacks.order_by(Feedback.created_at.desc()).limit(limit).all()
+    
 class Item(db.Model):
     __tablename__ = 'items'
 
