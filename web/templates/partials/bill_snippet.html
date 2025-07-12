@@ -26,3 +26,17 @@
         <em>Generated on {{ now().strftime('%d %B %Y, %I:%M %p') }}</em>
     </div>
 </div>
+
+<!-- Add points information -->
+{% if bill.customer_email and bill.loyalty_code %}
+<div class="loyalty-info">
+    <div class="loyalty-info">
+        <div class="loyalty-label">Points Earned:</div>
+        <div class="loyalty-value">{{ bill.loyalty_points_earned }}</div>
+    </div>
+    <div class="loyalty-info">
+        <div class="loyalty-label">Loyalty Code:</div>
+        <div class="loyalty-value">{{ bill.loyalty_code }}</div>
+    </div>
+</div>
+{% endif %}
