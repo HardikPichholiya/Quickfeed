@@ -13,7 +13,7 @@
     </div>
     <nav class="sidebar-nav">
         <ul>
-            <li><a href="#" class="nav-link"><i class="fas fa-home"></i><span>Dashboard</span></a></li>
+            <li><a href="/dashboard" class="nav-link"><i class="fas fa-home"></i><span>Dashboard</span></a></li>
             <li><a href="/dashboard/my-feedback" class="nav-link"><i class="fas fa-comment-dots"></i><span>All Feedback</span></a></li>
             <li><a href="#" id="analytics" class="nav-link"><i class="fas fa-chart-line"></i><span>Analytics</span></a></li>
             <li class="active"><a href="/dashboard/generate-bill" class="nav-link"><i class="fas fa-receipt"></i><span>Billing</span></a></li>
@@ -29,7 +29,7 @@
     <header class="header">
         <div class="header-left">
             <div class="menu-toggle" onclick="toggleSidebar()">
-                <i class="fas fa-user"></i>
+                <i class="fas fa-bars"></i>
             </div>
             <div class="brand-logo">
                 <h1>Quickfeed</h1>
@@ -37,7 +37,14 @@
             </div>
         </div>
     </header>
+<!-- In generate_bill.html, add this before the item list -->
+<div class="form-group" style="margin-bottom: 20px;">
+    <label for="customer_email" style="display: block; margin-bottom: 5px;">Customer Email (for loyalty code)</label>
+    <input type="email" name="customer_email" id="customer_email" class="form-control" 
+           placeholder="Enter customer email to generate loyalty code">
+</div>
 
+<!-- The rest of your existing template -->
     <div class="setup-container">
         <h1 class="setup-title">🧾 Generate Bill</h1>
         <p class="setup-subtitle">Select items and quantities to generate a bill.</p>
@@ -65,13 +72,14 @@
                 {% else %}
                     <div class="empty-state">
                         <p>No items found. Add some items first.</p>
+                        <a href="{{ url_for('main.item_setup') }}" class="btn-add" style="text-decoration: none; display: inline-block; text-align: center; padding: 10px 20px; margin-top: 10px;">Add Items</a>
                     </div>
                 {% endif %}
             </div>
             
             {% if items %}
             <div style="margin-top: 20px; display: flex; gap: 10px;">
-                <button type="submit" class="btn-add">Generate Bill</button>
+                <button type="submit" class="btn-add" id="generateBillBtn">Generate Bill</button>
                 <a href="{{ url_for('main.item_setup') }}" class="btn-delete" style="text-decoration: none; display: inline-block; text-align: center; padding: 10px 20px;">Add Items</a>
             </div>
             {% endif %}
@@ -82,70 +90,106 @@
 
     <script>
     function toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('active');
-        document.getElementById('sidebarOverlay').classList.toggle('active');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
     }
 
+    // Close sidebar when clicking outside
     document.addEventListener('click', function(event) {
         const sidebar = document.getElementById('sidebar');
         const menuToggle = document.querySelector('.menu-toggle');
+        const overlay = document.getElementById('sidebarOverlay');
+        
         if (!sidebar.contains(event.target) && !menuToggle.contains(event.target)) {
             sidebar.classList.remove('active');
-            document.getElementById('sidebarOverlay').classList.remove('active');
+            overlay.classList.remove('active');
         }
-    });
-
-    document.addEventListener('DOMContentLoaded', function() {
-        const menuToggle = document.querySelector('.menu-toggle');
-        if (menuToggle) {
-            menuToggle.addEventListener('click', function(e) {
-                e.preventDefault();
-                window.location.href = '/dashboard';
-            });
-        }
-
-        // Form submit handler with robust error reporting
-        document.getElementById('billForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-            const form = this;
-            const formData = new FormData(form);
-
-            fetch("{{ url_for('main.generate_bill') }}", {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: formData
-            })
-            .then(response => {
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        alert("You are not logged in. Please log in and try again.");
-                        window.location.href = "/auth/login";
-                        return;
-                    }
-                    return response.text().then(text => {
-                        console.error("Error from server:", text);
-                        throw new Error("Server responded with error");
-                    });
-                }
-                return response.text();
-            })
-            .then(html => {
-                document.getElementById('bill-result').innerHTML = html;
-            })
-            .catch(error => {
-                console.error("Fetch failed:", error);
-                alert("Something went wrong while generating the bill.");
-            });
-        });
     });
 
     function toggleQty(itemId) {
         const checkbox = document.getElementById('item_' + itemId);
         const qtyInput = document.getElementById('qty_' + itemId);
         qtyInput.disabled = !checkbox.checked;
+        
+        // Reset quantity to 1 when unchecked
+        if (!checkbox.checked) {
+            qtyInput.value = 1;
+        }
     }
+
+    // Wait for DOM to be fully loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle form submission
+        const billForm = document.getElementById('billForm');
+        if (billForm) {
+            billForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                
+                // Check if at least one item is selected
+                const checkboxes = document.querySelectorAll('input[type="checkbox"][name^="item_"]');
+                const hasSelectedItems = Array.from(checkboxes).some(checkbox => checkbox.checked);
+                
+                if (!hasSelectedItems) {
+                    alert('Please select at least one item to generate a bill.');
+                    return;
+                }
+                
+                // Show loading state
+                const submitBtn = document.getElementById('generateBillBtn');
+                const originalText = submitBtn.textContent;
+                submitBtn.textContent = 'Generating...';
+                submitBtn.disabled = true;
+                
+                // Prepare form data
+                const formData = new FormData(this);
+                
+                // Make AJAX request
+                fetch("{{ url_for('main.generate_bill') }}", {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            alert("You are not logged in. Please log in and try again.");
+                            window.location.href = "/auth/login";
+                            return Promise.reject('Unauthorized');
+                        }
+                        return response.text().then(text => {
+                            console.error("Error from server:", text);
+                            throw new Error(`Server error: ${response.status}`);
+                        });
+                    }
+                    return response.text();
+                })
+                .then(html => {
+                    if (html) {
+                        document.getElementById('bill-result').innerHTML = html;
+                        // Scroll to the bill result
+                        document.getElementById('bill-result').scrollIntoView({ 
+                            behavior: 'smooth' 
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error("Fetch failed:", error);
+                    if (error !== 'Unauthorized') {
+                        alert("Something went wrong while generating the bill. Please try again.");
+                    }
+                })
+                .finally(() => {
+                    // Reset button state
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                });
+            });
+        }
+    });
     </script>
 </div>
 {% endblock %}

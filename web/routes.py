@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify, session, abort
 from flask_login import login_required, current_user
 from flask_socketio import emit, join_room, leave_room
-from sqlalchemy import func
+from sqlalchemy import  func
 from datetime import datetime, timedelta
 import qrcode
 import io
@@ -309,26 +309,51 @@ def homepage():
     """Homepage route"""
     return render_template('homepage.html')
 
+
+# routes.py (update customer dashboard route)
+
+@customer.route('/customer/dashboard')
+@login_required
+def dashboard():
+    """Customer dashboard"""
+    try:
+        # Get recent feedback from this customer using email
+        recent_feedbacks = Feedback.query.filter(
+            Feedback.customer_email == current_user.email
+        ).order_by(Feedback.created_at.desc()).limit(5).all()
+        
+        # Get feedback count
+        feedback_count = Feedback.query.filter(
+            Feedback.customer_email == current_user.email
+        ).count()
+        
+        return render_template('customer_dashboard.html', 
+                             recent_feedbacks=recent_feedbacks,
+                             feedback_count=feedback_count)
+    except Exception as e:
+        print(f"Error loading customer dashboard: {e}")
+        flash('Error loading dashboard. Please try again.', 'danger')
+        return redirect(url_for('main.homepage'))
+
+
 @main.route('/dashboard', methods=['GET', 'POST'])
 @login_required
 @require_shopkeeper
 def dashboard():
-    """Shopkeeper dashboard - handles both GET and POST for adding items"""
     try:
-        # Get the current shopkeeper (validated by decorator)
         shopkeeper = Shopkeeper.query.get(current_user.id)
         if not shopkeeper:
             flash('Shopkeeper account not found.', 'danger')
             return redirect(url_for('auth.login'))
-        
-        # Get recent feedback for this shopkeeper
+
+        # Get recent feedback
         recent_feedback = Feedback.query.filter_by(shopkeeper_id=shopkeeper.id)\
-                                       .order_by(Feedback.created_at.desc())\
-                                       .limit(10).all()
-        
-        # Get statistics
+                                        .order_by(Feedback.created_at.desc())\
+                                        .limit(10).all()
+
+        # Get stats
         stats = StatisticsService.get_shopkeeper_stats(shopkeeper.id)
-        
+
         if stats is None:
             flash('Error loading dashboard statistics.', 'warning')
             stats = {
@@ -338,27 +363,40 @@ def dashboard():
                 'recent_feedbacks': [],
                 'satisfaction_rate': 0
             }
-        return render_template('dashboard.html', 
-            all_recent_feedback=recent_feedback,  # ✅ Fix the variable name
-            shopkeeper=shopkeeper,
-            total_feedback=stats['total_feedbacks'],
-            average_rating=stats['average_rating'],
-            rating_distribution=stats['rating_distribution'],
-            response_rate=stats['satisfaction_rate'],
-)
 
-                             
+        # NEW: Fetch feedback trend (past 30 days)
+        trend_data = Feedback.query \
+            .with_entities(func.date(Feedback.created_at).label('date'), func.count().label('count')) \
+            .filter_by(shopkeeper_id=shopkeeper.id) \
+            .group_by(func.date(Feedback.created_at)) \
+            .order_by(func.date(Feedback.created_at)) \
+            .all()
+
+        # Format for Chart.js
+        feedback_trend = [{'date': str(row.date), 'count': row.count} for row in trend_data]
+
+        return render_template('dashboard.html',
+                               all_recent_feedback=recent_feedback,
+                               shopkeeper=shopkeeper,
+                               total_feedback=stats['total_feedbacks'],
+                               average_rating=stats['average_rating'],
+                               rating_distribution=stats['rating_distribution'],
+                               response_rate=stats['satisfaction_rate'],
+                               feedback_trend=feedback_trend  # ✅ Pass to template
+                               )
     except Exception as e:
         print(f"Error loading dashboard: {e}")
         flash('Error loading dashboard. Please try again.', 'danger')
-        return render_template('dashboard.html', 
-                             recent_feedback=[],
-                             shopkeeper=None,
-                             total_feedbacks=0,
-                             average_rating=0,
-                             rating_distribution={1: 0, 2: 0, 3: 0, 4: 0, 5: 0},
-                             recent_feedbacks=[],
-                             satisfaction_rate=0)
+        return render_template('dashboard.html',
+                               recent_feedback=[],
+                               shopkeeper=None,
+                               total_feedbacks=0,
+                               average_rating=0,
+                               rating_distribution={1: 0, 2: 0, 3: 0, 4: 0, 5: 0},
+                               recent_feedbacks=[],
+                               satisfaction_rate=0,
+                               feedback_trend=[]
+                               )
 
 @main.route('/api/dashboard-stats')
 @login_required
@@ -445,6 +483,7 @@ def public_feedback(username):
         return redirect(url_for('main.homepage'))
 from flask import request, jsonify, render_template
 
+# In routes.py, update the generate_bill route
 @main.route('/dashboard/generate-bill', methods=['GET', 'POST'])
 @login_required
 @require_shopkeeper
@@ -457,6 +496,7 @@ def generate_bill():
     # POST method - handle bill generation
     selected_items = []
     total_price = 0
+    customer_email = request.form.get('customer_email', '').strip().lower()
 
     for item in items:
         if request.form.get(f'item_{item.id}'):
@@ -466,6 +506,7 @@ def generate_bill():
                     raise ValueError("Quantity must be at least 1")
             except ValueError:
                 qty = 1  # Default to 1 if invalid
+            
             item_total = qty * item.price
             total_price += item_total
             selected_items.append({
@@ -474,24 +515,51 @@ def generate_bill():
                 'item_total': item_total
             })
 
+    # Check if any items were selected
+    if not selected_items:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return '<div class="alert alert-warning">Please select at least one item to generate a bill.</div>', 400
+        else:
+            flash('Please select at least one item to generate a bill.', 'warning')
+            return redirect(url_for('main.generate_bill'))
+
     from datetime import datetime
-    from web.models import Bill
+    from web.models import Bill, BillItem
+    from web.utils import generate_unique_loyalty_code
 
+    # Create the bill
     bill = Bill(
-        customer_id=None,
         shopkeeper_id=current_user.id,
-        total_price=total_price
+        total_price=total_price,
+        customer_email=customer_email if customer_email else None
     )
-
+    
+    # Generate loyalty code if customer email is provided
+    if customer_email:
+        bill.loyalty_code = generate_unique_loyalty_code()
+    
     db.session.add(bill)
+    db.session.flush()  # To get the bill ID
+
+    # Create bill items
+    for item_data in selected_items:
+        bill_item = BillItem(
+            bill_id=bill.id,
+            item_id=item_data['item'].id,
+            quantity=item_data['quantity'],
+            price_per_unit=item_data['item'].price
+        )
+        db.session.add(bill_item)
+
     db.session.commit()
 
-    # ✅ AJAX: Return partial template
+    # AJAX: Return partial template
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return render_template(
             'partials/bill_snippet.html',
             selected_items=selected_items,
             total_price=total_price,
+            bill=bill,
             now=datetime.now
         )
 
@@ -567,6 +635,7 @@ def submit_feedback():
     feedback = Feedback(
         rating=rating,
         text=feedback_text,
+        customer_email=current_user.email,
         customer_id=customer_id,
         bill_id=bill.id
     )
@@ -746,16 +815,105 @@ def my_feedback_dashboard():
         return redirect(url_for('main.dashboard'))
     
 
-@customer.route('/customer/dashboard')
+from datetime import datetime, timedelta
+import calendar
+
+# Add to routes.py
+@main.route('/analytics')
 @login_required
-def dashboard():
-    """Customer dashboard"""
+@require_shopkeeper
+def analytics():
+    # Add this at the start of your route to verify DB connection
     try:
-        return render_template('customer_dashboard.html')
+        test_query = Shopkeeper.query.limit(1).all()
+        print(f"DEBUG: DB test query: {test_query}")
+    except Exception as db_error:
+        print(f"DEBUG: DB error: {str(db_error)}")
+    try:
+        print("DEBUG: Entered analytics route")  # Debug log
+        shopkeeper = Shopkeeper.query.get(current_user.id)
+        print(f"DEBUG: Shopkeeper: {shopkeeper}")  # Debug log
+        
+        if not shopkeeper:
+            flash('Shopkeeper account not found.', 'danger')
+            return redirect(url_for('auth.login'))
+        
+        # Get stats
+        stats = StatisticsService.get_shopkeeper_stats(shopkeeper.id)
+        print(f"DEBUG: Stats: {stats}")  # Debug log
+        
+        if stats is None:
+            stats = {
+                'total_feedbacks': 0,
+                'average_rating': 0,
+                'rating_distribution': {1: 0, 2: 0, 3: 0, 4: 0, 5: 0},
+                'satisfaction_rate': 0
+            }
+        
+        # Get feedback trend for the last 6 months
+        monthly_trend = []
+        current_date = datetime.utcnow()
+        print(f"DEBUG: Current date: {current_date}")  # Debug log
+        
+        for i in range(5, -1, -1):
+            month_date = current_date - timedelta(days=30*i)
+            print(f"DEBUG: Processing month {i}: {month_date}")  # Debug log
+            
+            try:
+                month_name = calendar.month_abbr[month_date.month]
+                year = month_date.year
+                
+                # Get feedback count for the month
+                start_date = month_date.replace(day=1, hour=0, minute=0, second=0)
+                end_date = (start_date.replace(day=28) + timedelta(days=4)).replace(day=1)
+                
+                print(f"DEBUG: Querying between {start_date} and {end_date}")  # Debug log
+                
+                count = Feedback.query.filter(
+                    Feedback.shopkeeper_id == shopkeeper.id,
+                    Feedback.created_at >= start_date,
+                    Feedback.created_at < end_date
+                ).count()
+                
+                monthly_trend.append({
+                    'month': f"{month_name} {year}",
+                    'count': count
+                })
+                
+            except Exception as month_error:
+                print(f"ERROR processing month {i}: {str(month_error)}")
+                monthly_trend.append({
+                    'month': f"Month {i}",
+                    'count': 0
+                })
+        
+        # Get feedback by day of week
+        day_counts = [0] * 7  # Sunday to Saturday
+        feedbacks = Feedback.query.filter_by(shopkeeper_id=shopkeeper.id).all()
+        
+        for feedback in feedbacks:
+            if feedback.created_at:
+                try:
+                    day_counts[feedback.created_at.weekday()] += 1
+                except Exception as day_error:
+                    print(f"ERROR processing day count: {str(day_error)}")
+        
+        print("DEBUG: Successfully processed all data")  # Debug log
+        return render_template('analytics.html',
+                            total_feedback=stats['total_feedbacks'],
+                            average_rating=stats['average_rating'],
+                            rating_distribution=stats['rating_distribution'],
+                            monthly_trend=monthly_trend,
+                            day_counts=day_counts,
+                            shopkeeper=shopkeeper)
+        
     except Exception as e:
-        print(f"Error loading customer dashboard: {e}")
-        flash('Error loading dashboard. Please try again.', 'danger')
-        return redirect(url_for('main.homepage'))
+        print(f"ERROR in analytics route: {str(e)}")  # More detailed error
+        print(f"ERROR Type: {type(e)}")  # Error type
+        import traceback
+        traceback.print_exc()  # Full traceback
+        flash('Error loading analytics. Please try again.', 'danger')
+        return redirect(url_for('main.dashboard'))
 
 
 # ===============================
