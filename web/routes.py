@@ -7,7 +7,7 @@ import qrcode
 import io
 import base64
 from web import db, socketio
-from web.models import User, Feedback, Shopkeeper , Item, Bill
+from web.models import BillItem, User, Feedback, Shopkeeper , Item, Bill
 from web.forms import FeedbackForm, PublicFeedbackForm
 # Add to top of routes.py
 import secrets
@@ -277,37 +277,32 @@ def get_time_ago(timestamp):
 
 
 def require_shopkeeper(f):
-    """Decorator to ensure current user is a shopkeeper"""
     def decorated_function(*args, **kwargs):
         try:
+            print("DEBUG: require_shopkeeper - current_user:", current_user)
+            print("DEBUG: require_shopkeeper - is_authenticated:", current_user.is_authenticated)
+            shopkeeper = Shopkeeper.query.get(current_user.id)
+            print("DEBUG: require_shopkeeper - shopkeeper:", shopkeeper)
             if not current_user.is_authenticated:
                 flash('Please log in to access this page.', 'warning')
                 return redirect(url_for('auth.login'))
-            
-            # Check if the current user is actually a shopkeeper
-            shopkeeper = Shopkeeper.query.get(current_user.id)
             if not shopkeeper:
-                # Check if they're a regular user
                 user = User.query.get(current_user.id)
+                print("DEBUG: require_shopkeeper - user:", user)
                 if user:
                     flash('Access denied. This page is for shopkeepers only.', 'danger')
                     return redirect(url_for('customer.dashboard'))
                 else:
                     flash('Account not found. Please contact support.', 'danger')
                     return redirect(url_for('auth.login'))
-            
-            # Store shopkeeper info in session for later use
             session['shopkeeper_id'] = shopkeeper.id
             session['shopkeeper_username'] = shopkeeper.username
             session['is_shopkeeper'] = True
-            
             return f(*args, **kwargs)
-            
         except Exception as e:
             print(f"Error in require_shopkeeper decorator: {e}")
             flash('An error occurred while verifying your account.', 'danger')
             return redirect(url_for('auth.login'))
-    
     decorated_function.__name__ = f.__name__
     return decorated_function
 
@@ -503,102 +498,98 @@ def feedback_success():
 # In routes.py, update the generate_bill route
 @main.route('/dashboard/generate-bill', methods=['GET', 'POST'])
 @login_required
-@require_shopkeeper
 def generate_bill():
-    items = Item.query.filter_by(shopkeeper_id=current_user.id).all()
+    try:
+        # Manual shopkeeper verification
+        shopkeeper = Shopkeeper.query.get(current_user.id)
+        if not shopkeeper:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'error': 'Only shopkeepers can generate bills'}), 403
+            flash('Only shopkeepers can generate bills', 'danger')
+            return redirect(url_for('customer.dashboard'))
+        
+        items = Item.query.filter_by(shopkeeper_id=current_user.id).all()
 
-    if request.method == 'GET':
-        return render_template('generate_bill.html', items=items)
+        if request.method == 'GET':
+            return render_template('generate_bill.html', items=items)
 
-    # POST method - handle bill generation
-    selected_items = []
-    total_price = 0
-    customer_email = request.form.get('customer_email', '').strip().lower()
+        # POST method - handle bill generation
+        selected_items = []
+        total_price = 0
+        customer_email = request.form.get('customer_email', '').strip().lower()
 
-    for item in items:
-        if request.form.get(f'item_{item.id}'):
-            try:
-                qty = int(request.form.get(f'qty_{item.id}', 1))
-                if qty < 1:
-                    raise ValueError("Quantity must be at least 1")
-            except ValueError:
-                qty = 1  # Default to 1 if invalid
-            
-            
-            item_total = qty * item.price
-            total_price += item_total
-            selected_items.append({
-                'item': item,
-                'quantity': qty,
-                'item_total': item_total
-            })
+        for item in items:
+            if request.form.get(f'item_{item.id}'):
+                try:
+                    qty = int(request.form.get(f'qty_{item.id}', 1))
+                    if qty < 1:
+                        raise ValueError("Quantity must be at least 1")
+                except ValueError:
+                    qty = 1  # Default to 1 if invalid
+                
+                item_total = qty * item.price
+                total_price += item_total
+                selected_items.append({
+                    'item': item,
+                    'quantity': qty,
+                    'item_total': item_total
+                })
 
-    # Check if any items were selected
-    if not selected_items:
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return '<div class="alert alert-warning">Please select at least one item to generate a bill.</div>', 400
-        else:
-            flash('Please select at least one item to generate a bill.', 'warning')
-            return redirect(url_for('main.generate_bill'))
+        if not selected_items:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return '<div class="alert alert-warning">Please select at least one item to generate a bill.</div>', 400
+            else:
+                flash('Please select at least one item to generate a bill.', 'warning')
+                return redirect(url_for('main.generate_bill'))
 
-    from datetime import datetime
-    from web.models import Bill, BillItem
-    from web.utils import generate_unique_loyalty_code
-    from web.models import Bill, BillItem
-
-    # Create the bill
-    bill = Bill(
-        shopkeeper_id=current_user.id,
-        total_price=total_price,
-        customer_email=customer_email if customer_email else None
-    )
-    
-    # Generate loyalty code if customer email is provided
-    if customer_email:
-        print("Customer email:", customer_email)
-        bill.loyalty_code = generate_unique_loyalty_code()
-        print("Generated code:", bill.loyalty_code)
-        bill.loyalty_points_earned = int(total_price * 0.05)
-    db.session.add(bill)
-    db.session.flush()  # To get the bill ID
-
-    # Create bill items
-    for item_data in selected_items:
-        bill_item = BillItem(
-            bill_id=bill.id,
-            item_id=item_data['item'].id,
-            quantity=item_data['quantity'],
-            price_per_unit=item_data['item'].price
-        )
-        db.session.add(bill_item)
-
-    db.session.flush()  # To get the bill ID
-
-    # Create bill items
-    for item_data in selected_items:
-        bill_item = BillItem(
-            bill_id=bill.id,
-            item_id=item_data['item'].id,
-            quantity=item_data['quantity'],
-            price_per_unit=item_data['item'].price
-        )
-        db.session.add(bill_item)
-
-    db.session.commit()
-
-    # AJAX: Return partial template
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return render_template(
-            'partials/bill_snippet.html',
-            selected_items=selected_items,
+        # Create the bill
+        bill = Bill(
+            shopkeeper_id=current_user.id,
             total_price=total_price,
-            bill=bill,
-            now=datetime.now,
-            shop_name = current_user.shopname
+            customer_email=customer_email if customer_email else None
         )
+        
+        # Generate loyalty code if customer email is provided
+        if customer_email:
+            bill.loyalty_code = generate_unique_loyalty_code()
+            bill.loyalty_points_earned = int(total_price * 0.05)
+        
+        db.session.add(bill)
+        db.session.flush()  # To get the bill ID
 
-    # Fallback: Redirect to bill page
-    return redirect(url_for('main.generate_bill'))
+        # Create bill items
+        for item_data in selected_items:
+            bill_item = BillItem(
+                bill_id=bill.id,
+                item_id=item_data['item'].id,
+                quantity=item_data['quantity'],
+                price_per_unit=item_data['item'].price
+            )
+            db.session.add(bill_item)
+
+        db.session.commit()
+
+        # AJAX: Return partial template
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return render_template(
+                'partials/bill_snippet.html',
+                selected_items=selected_items,
+                total_price=total_price,
+                bill=bill,
+                now=datetime.now,
+                shop_name=shopkeeper.shopname
+            )
+
+        # Fallback: Redirect to bill page
+        return redirect(url_for('main.generate_bill'))
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error generating bill: {str(e)}")
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'error': str(e)}), 500
+        flash('Something went wrong while generating the bill. Please try again.', 'danger')
+        return redirect(url_for('main.generate_bill'))
 
 @customer.route('/redeem', methods=['POST'])
 @login_required
