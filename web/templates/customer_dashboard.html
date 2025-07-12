@@ -3,25 +3,251 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Customer Dashboard - QuickFeed</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Additional styles for customer dashboard */
+        .customer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .welcome-section {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+        
+        .welcome-section h1 {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            color: #2d3748;
+        }
+        
+        .welcome-section p {
+            font-size: 1.2rem;
+            color: #718096;
+            margin-bottom: 25px;
+        }
+        
+        .metrics-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .metric-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+        
+        .metric-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: #4a5568;
+        }
+        
+        .metric-value {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #3182ce;
+            margin-bottom: 10px;
+        }
+        
+        .feedback-section {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        
+        .section-header h2 {
+            font-size: 1.8rem;
+            color: #2d3748;
+        }
+        
+        .view-all-link {
+            color: #3182ce;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .feedback-list {
+            display: grid;
+            gap: 20px;
+        }
+        
+        .feedback-item {
+            background-color: #f7fafc;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #3182ce;
+        }
+        
+        .feedback-rating {
+            margin-bottom: 15px;
+        }
+        
+        .feedback-rating .fa-star {
+            color: gold;
+            font-size: 1.2rem;
+        }
+        
+        .feedback-content {
+            margin-top: 10px;
+        }
+        
+        .feedback-text {
+            font-size: 1.1rem;
+            line-height: 1.5;
+            color: #2d3748;
+            margin-bottom: 15px;
+        }
+        
+        .feedback-meta {
+            display: flex;
+            justify-content: space-between;
+            color: #718096;
+            font-size: 0.9rem;
+        }
+        
+        .no-feedback {
+            text-align: center;
+            padding: 40px;
+            color: #a0aec0;
+            font-size: 1.2rem;
+        }
+        
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .btn-primary {
+            background-color: #3182ce;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2b6cb0;
+        }
+        
+        .btn-logout {
+            background-color: #e53e3e;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-logout:hover {
+            background-color: #c53030;
+        }
+    </style>
 </head>
 <body>
-    <a  class="text-decoration-none text-dark">
-        <div class="card add-item-card d-flex align-items-center justify-content-center text-center" style="height: 200px; border: 2px dashed #ccc;">
-            <div class="card-body">
-            <h1 class="display-3">+</h1>
-            <p class="fs-5 mb-0">Add Item</p>
+    <div class="customer-container">
+        <!-- Welcome Section -->
+        <section class="welcome-section">
+            <h1>Hi, {{ current_user.first_name }} {{ current_user.last_name }}!</h1>
+            <p>Welcome to your QuickFeed Customer Dashboard</p>
+        </section>
+
+        <!-- Metrics Section -->
+        <div class="metrics-section">
+            <div class="metric-card">
+                <h3>Total Points</h3>
+                <div class="metric-value">0</div>
+                <p>Earn points by giving feedback!</p>
+            </div>
+            <div class="metric-card">
+                <h3>Feedback Given</h3>
+                <div class="metric-value">{{ feedback_count }}</div>
+                <p>Your valuable feedback helps businesses improve</p>
             </div>
         </div>
-    </a>
 
-<style>
-  .add-item-card:hover {
-    background-color: #f8f9fa;
-    border-color: #007bff;
-    transition: all 0.2s ease;
-  }
-</style>
+        <!-- Recent Feedback Section -->
+        <section class="feedback-section">
+            <div class="section-header">
+                <h2>Your Recent Feedback</h2>
+                {% if recent_feedbacks %}
+                <a href="#" class="view-all-link">View All</a>
+                {% endif %}
+            </div>
+            
+            <div class="feedback-list">
+                {% if recent_feedbacks %}
+                    {% for feedback in recent_feedbacks %}
+                    <div class="feedback-item">
+                        <div class="feedback-rating">
+                            {% for i in range(1, 6) %}
+                                {% if i <= feedback.rating %}
+                                    <i class="fas fa-star"></i>
+                                {% else %}
+                                    <i class="far fa-star"></i>
+                                {% endif %}
+                            {% endfor %}
+                            <span style="margin-left: 8px;">({{ feedback.rating }})</span>
+                        </div>
+                        
+                        <div class="feedback-content">
+                            <div class="feedback-text">
+                                <strong>{{ feedback.title }}</strong>: 
+                                {{ feedback.content[:100] }}{% if feedback.content|length > 100 %}...{% endif %}
+                            </div>
+                            <div class="feedback-meta">
+                                <span class="shop-name">{{ feedback.shopkeeper.shopname }}</span>
+                                <span class="feedback-time">{{ feedback.created_at.strftime('%Y-%m-%d') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-feedback">
+                        <p>You haven't given any feedback yet.</p>
+                        <p>Share your experience with businesses to help them improve!</p>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
 
+        <!-- Action Bar -->
+        <div class="action-bar">
+            
+            <a href="{{ url_for('auth.logout') }}" class="btn-logout">Logout</a>
+        </div>
+    </div>
 </body>
 </html>

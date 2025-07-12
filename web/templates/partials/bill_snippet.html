@@ -16,6 +16,22 @@
             <div class="total-price"><strong>₹{{ "%.2f"|format(total_price) }}</strong></div>
         </div>
     </div>
+    
+    {% if bill.customer_email %}
+    <div class="receipt-loyalty">
+        <div class="loyalty-info">
+            <div class="loyalty-label">Customer Email:</div>
+            <div class="loyalty-value">{{ bill.customer_email }}</div>
+        </div>
+        {% if bill.loyalty_code %}
+        <div class="loyalty-info">
+            <div class="loyalty-label">Loyalty Code:</div>
+            <div class="loyalty-value">{{ bill.loyalty_code }}</div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+    
     <div class="receipt-footer">
         <em>Generated on {{ now().strftime('%d %B %Y, %I:%M %p') }}</em>
     </div>

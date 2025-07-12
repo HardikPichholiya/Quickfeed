@@ -37,7 +37,14 @@
             </div>
         </div>
     </header>
+<!-- In generate_bill.html, add this before the item list -->
+<div class="form-group" style="margin-bottom: 20px;">
+    <label for="customer_email" style="display: block; margin-bottom: 5px;">Customer Email (for loyalty code)</label>
+    <input type="email" name="customer_email" id="customer_email" class="form-control" 
+           placeholder="Enter customer email to generate loyalty code">
+</div>
 
+<!-- The rest of your existing template -->
     <div class="setup-container">
         <h1 class="setup-title">🧾 Generate Bill</h1>
         <p class="setup-subtitle">Select items and quantities to generate a bill.</p>

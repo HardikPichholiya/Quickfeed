@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Quickfeed</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Sidebar (same as dashboard) -->
+    <div class="sidebar" id="sidebar">
+        <!-- ... existing sidebar code ... -->
+        <!-- Make sure to set Analytics as active -->
+        <li class="active">
+            <a href="/analytics" class="nav-link">
+                <i class="fas fa-chart-line"></i>
+                <span>Analytics</span>
+            </a>
+        </li>
+        <!-- ... rest of sidebar ... -->
+    </div>
+
+
+            <!-- Main Content -->
+<div class="main-content">
+    <header class="header">
+        <div class="header-left">
+            <div class="menu-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-user"></i>
+            </div>
+            <!-- Add this back button -->
+            <a href="/dashboard" class="back-btn">
+                <i class="fas fa-arrow-left"></i>
+                Back to Dashboard
+            </a>
+            <div class="brand-logo">
+                <h1> Quickfeed</h1>
+                <span class="brand-tagline">Real-time feedback, real-time growth</span>
+            </div>
+        </div>
+    
+        </header>
+        
+
+        <main class="dashboard-content">
+            <!-- Welcome Section -->
+            <section class="welcome-section">
+                <h2>Analytics Dashboard</h2>
+                <p>Detailed insights about your feedback performance</p>
+            </section>
+
+            <!-- Key Metrics -->
+            <section class="metrics-section">
+                <h3 class="section-title">Key Metrics</h3>
+                <div class="metrics-grid">
+                    <div class="metric-item">
+                        <div class="metric-icon">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value">{{ total_feedback or 0 }}</div>
+                            <div class="metric-label">Total Feedback</div>
+                        </div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value">{{ average_rating or 0.0 }}</div>
+                            <div class="metric-label">Avg. Rating</div>
+                        </div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-icon">
+                            <i class="fas fa-percentage"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value">{{ (rating_distribution[4] + rating_distribution[5]) or 0 }}%</div>
+                            <div class="metric-label">Positive Feedback (4-5★)</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts Section -->
+            <section class="charts-section">
+                <div class="charts-grid">
+                    <!-- Rating Distribution Chart -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>Rating Distribution</h3>
+                        </div>
+                        <div class="chart-content">
+                            <canvas id="ratingDistributionChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Feedback Trend -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>Monthly Feedback Trend</h3>
+                        </div>
+                        <div class="chart-content">
+                            <canvas id="monthlyTrendChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Feedback by Day -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>Feedback by Day of Week</h3>
+                        </div>
+                        <div class="chart-content">
+                            <canvas id="dayOfWeekChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Satisfaction Rate -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>Satisfaction Rate</h3>
+                        </div>
+                        <div class="chart-content">
+                            <canvas id="satisfactionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // Initialize charts after page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Rating Distribution Chart
+            const ratingCtx = document.getElementById('ratingDistributionChart').getContext('2d');
+            new Chart(ratingCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['1 ★', '2 ★', '3 ★', '4 ★', '5 ★'],
+                    datasets: [{
+                        label: 'Feedback Count',
+                        data: [
+                            {{ rating_distribution[1] }},
+                            {{ rating_distribution[2] }},
+                            {{ rating_distribution[3] }},
+                            {{ rating_distribution[4] }},
+                            {{ rating_distribution[5] }}
+                        ],
+                        backgroundColor: [
+                            '#f44336', '#ff9800', '#ffc107', '#8bc34a', '#4caf50'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Feedback Count'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Monthly Trend Chart
+            const trendCtx = document.getElementById('monthlyTrendChart').getContext('2d');
+            new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: {{ monthly_trend|map(attribute='month')|list|tojson }},
+                    datasets: [{
+                        label: 'Feedbacks',
+                        data: {{ monthly_trend|map(attribute='count')|list|tojson }},
+                        borderColor: '#4bc0c0',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Feedback Count'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Day of Week Chart
+            const dayCtx = document.getElementById('dayOfWeekChart').getContext('2d');
+            new Chart(dayCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+                    datasets: [{
+                        label: 'Feedback Count',
+                        data: {{ day_counts|tojson }},
+                        backgroundColor: '#3f51b5'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Feedback Count'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Satisfaction Rate Chart
+            const satisfactionCtx = document.getElementById('satisfactionChart').getContext('2d');
+            new Chart(satisfactionCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Positive (4-5★)', 'Neutral (3★)', 'Negative (1-2★)'],
+                    datasets: [{
+                        data: [
+                            {{ rating_distribution[4] + rating_distribution[5] }},
+                            {{ rating_distribution[3] }},
+                            {{ rating_distribution[1] + rating_distribution[2] }}
+                        ],
+                        backgroundColor: ['#4caf50', '#ffc107', '#f44336']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        });
+
+        // Toggle sidebar (same as dashboard)
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+    </script>
+</body>
+</html>

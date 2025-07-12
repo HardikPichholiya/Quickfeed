@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quickfeed Dashboard</title>
@@ -57,12 +58,13 @@
                         <span>All Feedback</span>
                     </a>
                 </li>
-                <li>
-                    <a href="#" id="analytics" class="nav-link">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Analytics</span>
-                    </a>
-                </li>
+<li>
+    <!-- Change href to point to analytics route -->
+    <a href="{{ url_for('main.analytics') }}" id="analytics" class="nav-link">
+        <i class="fas fa-chart-line"></i>
+        <span>Analytics</span>
+    </a>
+</li>
                 <li>
                     <a href="/dashboard/generate-bill" id="settings" class="nav-link">
                         <i class="fas fa-receipt"></i>
@@ -170,6 +172,9 @@
                     <div class="chart-container">
                         <div class="chart-header">
                             <h3>Feedback Trends</h3>
+                            <a href="{{ url_for('main.analytics') }}" class="view-more-btn">
+                    View Detailed Analytics
+                </a>
                             <select class="chart-filter">
                                 <option>Last 30 days</option>
                                 <option>Last 3 months</option>
@@ -177,10 +182,8 @@
                             </select>
                         </div>
                         <div class="chart-content">
-                            <div class="chart-placeholder">
-                                <i class="fas fa-chart-area"></i>
-                                <p>This feature will be avaliable in version-2</p>
-                            </div>
+                            <canvas id="ratingDistributionChart" width="400" height="220"></canvas>
+                            
                         </div>
                     </div>
                     <div class="chart-container">
@@ -191,21 +194,23 @@
                                 <span class="score-max">/5.0</span>
                             </div>
                         </div>
-                        <div class="chart-content">
-                            <div class="satisfaction-breakdown" id="satisfactionBreakdown">
-                                {% for rating in range(5, 0, -1) %}
-                                <div class="satisfaction-bar">
-                                    <div class="bar-label">{{ rating }} star{{ 's' if rating != 1 else '' }}</div>
-                                    <div class="bar-container">
-                                        <div class="bar-fill" 
-                                         data-rating="{{ rating }}"
-                                         style="width: {{ (rating_distribution[rating] if rating_distribution and rating_distribution[rating] is not none else 0) | round(2) }}%"></div>
-                                    </div>
-                                    <div class="bar-value" data-rating-value="{{ rating }}">{{ rating_distribution[rating] if rating_distribution else 0 }}%</div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
+<div class="chart-content">
+     <canvas id="feedbackTrendChart" width="400" height="220"></canvas>
+     </div>
+    <div class="satisfaction-breakdown" id="satisfactionBreakdown">
+        {% for rating in range(5, 0, -1) %}
+        <div class="satisfaction-bar">
+            <div class="bar-label">{{ rating }} star{{ 's' if rating != 1 else '' }}</div>
+            <div class="bar-container">
+                <div class="bar-fill" 
+                 data-rating="{{ rating }}"
+                 style="width: {{ (rating_distribution[rating] if rating_distribution and rating_distribution[rating] is not none else 0) | round(2) }}%"></div>
+            </div>
+            <div class="bar-value" data-rating-value="{{ rating }}">{{ rating_distribution[rating] if rating_distribution else 0 }}%</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
                     </div>
                 </div>
             </section>
@@ -214,8 +219,14 @@
             <section class="feedback-section">
                 <div class="section-header">
                     <h3 class="section-title">Recent Feedback</h3>
-                    <a href="/dashboard/my-feedback" class="view-all-link">View all</a>
-                </div>
+                    <div>
+            <a href="{{ url_for('main.analytics') }}" class="view-more-btn" style="margin-right: 10px;">
+                Analytics
+            </a>
+            <a href="/dashboard/my-feedback" class="view-all-link">
+                View all
+            </a>
+        </div>
                 <div class="feedback-list" id="feedbackList">
                     {% if all_recent_feedback %}
                         {% for feedback in all_recent_feedback %}
@@ -253,257 +264,336 @@
     </div>
 
     <script>
-        // Initialize Socket.IO connection
-        const socket = io();
-        let notificationTimeout;
+    // Initialize Socket.IO connection
+    const socket = io();
+    let notificationTimeout;
 
-        // DOM elements
-        const connectionStatus = document.getElementById('connectionStatus');
-        const feedbackList = document.getElementById('feedbackList');
-        const totalFeedbackCount = document.getElementById('totalFeedbackCount');
-        const averageRating = document.getElementById('averageRating');
-        const activeCustomers = document.getElementById('activeCustomers');
-        const responseRate = document.getElementById('responseRate');
-        const satisfactionScore = document.getElementById('satisfactionScore');
-        const satisfactionBreakdown = document.getElementById('satisfactionBreakdown');
-        const feedbackNotification = document.getElementById('feedbackNotification');
-        const notificationText = document.getElementById('notificationText');
+    // DOM elements
+    const connectionStatus = document.getElementById('connectionStatus');
+    const feedbackList = document.getElementById('feedbackList');
+    const totalFeedbackCount = document.getElementById('totalFeedbackCount');
+    const averageRating = document.getElementById('averageRating');
+    const activeCustomers = document.getElementById('activeCustomers');
+    const responseRate = document.getElementById('responseRate');
+    const satisfactionScore = document.getElementById('satisfactionScore');
+    const satisfactionBreakdown = document.getElementById('satisfactionBreakdown');
+    const feedbackNotification = document.getElementById('feedbackNotification');
+    const notificationText = document.getElementById('notificationText');
 
-        // Socket.IO event handlers
-        socket.on('connect', function() {
-            console.log('Connected to server');
-            updateConnectionStatus(true);
-            socket.emit('join_dashboard');
-        });
+    socket.on('connect', function() {
+        console.log('Connected to server');
+        updateConnectionStatus(true);
+        socket.emit('join_dashboard');
+    });
 
-        socket.on('disconnect', function() {
-            console.log('Disconnected from server');
-            updateConnectionStatus(false);
-        });
+    socket.on('disconnect', function() {
+        console.log('Disconnected from server');
+        updateConnectionStatus(false);
+    });
 
-        socket.on('new_feedback', function(data) {
-            console.log('New feedback received:', data);
-            addNewFeedback(data);
-            updateAllMetrics(data.stats);
-            showNotification(data);
-        });
+    socket.on('new_feedback', function(data) {
+        console.log('New feedback received:', data);
+        addNewFeedback(data);
+        updateAllMetrics(data.stats);
+        showNotification(data);
+    });
 
-        socket.on('status', function(data) {
-            console.log('Status:', data.msg);
-        });
+    socket.on('status', function(data) {
+        console.log('Status:', data.msg);
+    });
 
-        // Update connection status indicator
-        function updateConnectionStatus(connected) {
-            const statusText = connectionStatus.querySelector('.status-text');
-            if (connected) {
-                connectionStatus.className = 'connection-status connected';
-                statusText.textContent = 'Live Updates Active';
-            } else {
-                connectionStatus.className = 'connection-status disconnected';
-                statusText.textContent = 'Connection Lost';
-            }
+    function updateConnectionStatus(connected) {
+        const statusText = connectionStatus.querySelector('.status-text');
+        if (connected) {
+            connectionStatus.className = 'connection-status connected';
+            statusText.textContent = 'Live Updates Active';
+        } else {
+            connectionStatus.className = 'connection-status disconnected';
+            statusText.textContent = 'Connection Lost';
+        }
+    }
+
+    function addNewFeedback(feedbackData) {
+        const noFeedbackMessage = document.getElementById('noFeedbackMessage');
+        if (noFeedbackMessage) {
+            noFeedbackMessage.remove();
         }
 
-        // Add new feedback to the list
-        function addNewFeedback(feedbackData) {
-            // Remove "no feedback" message if it exists
-            const noFeedbackMessage = document.getElementById('noFeedbackMessage');
-            if (noFeedbackMessage) {
-                noFeedbackMessage.remove();
-            }
+        let ratingClass, icon;
+        if (feedbackData.rating >= 4) {
+            ratingClass = 'positive';
+            icon = 'fas fa-star';
+        } else if (feedbackData.rating === 3) {
+            ratingClass = 'neutral';
+            icon = 'fas fa-comment';
+        } else {
+            ratingClass = 'negative';
+            icon = 'fas fa-exclamation-triangle';
+        }
 
-            // Determine rating class and icon
-            let ratingClass, icon;
-            if (feedbackData.rating >= 4) {
-                ratingClass = 'positive';
-                icon = 'fas fa-star';
-            } else if (feedbackData.rating === 3) {
-                ratingClass = 'neutral';
-                icon = 'fas fa-comment';
-            } else {
-                ratingClass = 'negative';
-                icon = 'fas fa-exclamation-triangle';
-            }
+        const feedbackItem = document.createElement('div');
+        feedbackItem.className = 'feedback-item new-feedback';
+        feedbackItem.setAttribute('data-feedback-id', feedbackData.id);
 
-            // Create new feedback element
-            const feedbackItem = document.createElement('div');
-            feedbackItem.className = 'feedback-item new-feedback';
-            feedbackItem.setAttribute('data-feedback-id', feedbackData.id);
-            
-            // Truncate content if too long
-            const truncatedContent = feedbackData.content.length > 100 ? 
-                feedbackData.content.substring(0, 100) + '...' : 
-                feedbackData.content;
+        const truncatedContent = feedbackData.content.length > 100 ?
+            feedbackData.content.substring(0, 100) + '...' :
+            feedbackData.content;
 
-            feedbackItem.innerHTML = `
-                <div class="feedback-rating ${ratingClass}">
-                    <i class="${icon}"></i>
-                    <span>${feedbackData.rating}.0</span>
+        feedbackItem.innerHTML = `
+            <div class="feedback-rating ${ratingClass}">
+                <i class="${icon}"></i>
+                <span>${feedbackData.rating}.0</span>
+            </div>
+            <div class="feedback-content">
+                <div class="feedback-text">"${truncatedContent}"</div>
+                <div class="feedback-meta">
+                    <span class="customer-name">${feedbackData.customer_name}</span>
+                    <span class="feedback-time">${feedbackData.time_ago}</span>
                 </div>
-                <div class="feedback-content">
-                    <div class="feedback-text">"${truncatedContent}"</div>
-                    <div class="feedback-meta">
-                        <span class="customer-name">${feedbackData.customer_name}</span>
-                        <span class="feedback-time">${feedbackData.time_ago}</span>
-                    </div>
-                </div>
-            `;
+            </div>
+        `;
 
-            // Add to the top of the feedback list
-            feedbackList.insertBefore(feedbackItem, feedbackList.firstChild);
+        feedbackList.insertBefore(feedbackItem, feedbackList.firstChild);
 
-            // Remove animation class after animation completes
-            setTimeout(() => {
-                feedbackItem.classList.remove('new-feedback');
-            }, 600);
-
-            // Keep only the latest 10 feedback items
-            const feedbackItems = feedbackList.querySelectorAll('.feedback-item');
-            if (feedbackItems.length > 10) {
-                feedbackItems[feedbackItems.length - 1].remove();
-            }
-        }
-
-        // Update all metrics with real-time data
-        function updateAllMetrics(stats) {
-            if (!stats) return;
-
-            // Update total feedback count with animation
-            updateMetricWithAnimation(totalFeedbackCount, stats.total_feedback);
-            
-            // Update average rating
-            updateMetricWithAnimation(averageRating, stats.average_rating);
-            
-            // Update active customers
-            updateMetricWithAnimation(activeCustomers, stats.active_customers);
-            
-            // Update response rate
-            updateMetricWithAnimation(responseRate, stats.response_rate + '%');
-            
-            // Update satisfaction score (same as average rating)
-            updateMetricWithAnimation(satisfactionScore, stats.average_rating);
-            
-            // Update rating distribution bars
-            updateRatingDistribution(stats.rating_distribution);
-        }
-
-        // Update individual metric with animation
-        function updateMetricWithAnimation(element, newValue) {
-            if (!element) return;
-            
-            element.textContent = newValue;
-            element.classList.add('updating');
-            
-            setTimeout(() => {
-                element.classList.remove('updating');
-            }, 500);
-        }
-
-        // Update rating distribution bars
-        function updateRatingDistribution(distribution) {
-            if (!distribution || !satisfactionBreakdown) return;
-
-            const bars = satisfactionBreakdown.querySelectorAll('.satisfaction-bar');
-            bars.forEach(bar => {
-                const barFill = bar.querySelector('.bar-fill');
-                const barValue = bar.querySelector('.bar-value');
-                const rating = parseInt(barFill.getAttribute('data-rating'));
-                
-                if (distribution[rating] !== undefined) {
-                    const percentage = distribution[rating];
-                    barFill.style.width = percentage + '%';
-                    barValue.textContent = percentage + '%';
-                    
-                    // Add update animation
-                    barFill.classList.add('updating');
-                    setTimeout(() => {
-                        barFill.classList.remove('updating');
-                    }, 500);
-                }
-            });
-        }
-
-        // Show notification for new feedback
-        function showNotification(feedbackData) {
-            const ratingText = feedbackData.rating >= 4 ? 'Great' : 
-                              feedbackData.rating === 3 ? 'Good' : 'Needs attention';
-            
-            notificationText.textContent = `${ratingText} feedback from ${feedbackData.customer_name}`;
-            
-            // Show notification
-            feedbackNotification.classList.add('show');
-            
-            // Auto-hide after 5 seconds
-            clearTimeout(notificationTimeout);
-            notificationTimeout = setTimeout(() => {
-                hideNotification();
-            }, 5000);
-        }
-
-        // Hide notification
-        function hideNotification() {
-            feedbackNotification.classList.remove('show');
-            clearTimeout(notificationTimeout);
-        }
-
-        // Sidebar functionality
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            
-            sidebar.classList.toggle('active');
-            overlay.classList.toggle('active');
-        }
-
-        // Close sidebar when clicking outside
-        document.addEventListener('click', function(event) {
-            const sidebar = document.getElementById('sidebar');
-            const menuToggle = document.querySelector('.menu-toggle');
-            
-            if (!sidebar.contains(event.target) && !menuToggle.contains(event.target)) {
-                sidebar.classList.remove('active');
-                document.getElementById('sidebarOverlay').classList.remove('active');
-            }
-        });
-
-        // QR button functionality
-        document.getElementById('generateQRBtn').addEventListener('click', function() {
-            window.location.href = '/generate-qr';
-        });
-
-        // Navigation link active state (excluding logout)
-        document.querySelectorAll('.nav-link:not(.logout-link)').forEach(link => {
-            link.addEventListener('click', function(e) {
-                if (this.getAttribute('href') === '#') {
-                    e.preventDefault();
-                    document.querySelectorAll('.sidebar-nav li').forEach(li => li.classList.remove('active'));
-                    this.parentElement.classList.add('active');
-                }
-            });
-        });
-
-        // Logout confirmation
-        document.querySelector('.logout-link').addEventListener('click', function(e) {
-            if (!confirm('Are you sure you want to logout?')) {
-                e.preventDefault();
-            }
-        });
-
-        // Initialize - hide connection status after 3 seconds if connected
         setTimeout(() => {
-            if (connectionStatus.classList.contains('connected')) {
-                connectionStatus.style.opacity = '0.7';
-            }
-        }, 3000);
+            feedbackItem.classList.remove('new-feedback');
+        }, 600);
 
-    document.getElementById('analytics').addEventListener('click', function(e) {
-    e.preventDefault(); // Prevent default link behavior
-    alert("Update will come in V2");
-  });
-//     document.getElementById('settings').addEventListener('click', function(e) {
-//     e.preventDefault(); // Prevent default link behavior
-//     alert("Update will come in V2");
-//   });
-    </script>
+        const feedbackItems = feedbackList.querySelectorAll('.feedback-item');
+        if (feedbackItems.length > 10) {
+            feedbackItems[feedbackItems.length - 1].remove();
+        }
+    }
+
+    function updateAllMetrics(stats) {
+        if (!stats) return;
+        updateMetricWithAnimation(totalFeedbackCount, stats.total_feedback);
+        updateMetricWithAnimation(averageRating, stats.average_rating);
+        updateMetricWithAnimation(activeCustomers, stats.active_customers);
+        updateMetricWithAnimation(responseRate, stats.response_rate + '%');
+        updateMetricWithAnimation(satisfactionScore, stats.average_rating);
+        updateRatingDistribution(stats.rating_distribution);
+    }
+
+    function updateMetricWithAnimation(element, newValue) {
+        if (!element) return;
+        element.textContent = newValue;
+        element.classList.add('updating');
+        setTimeout(() => {
+            element.classList.remove('updating');
+        }, 500);
+    }
+
+    function updateRatingDistribution(distribution) {
+        if (!distribution || !satisfactionBreakdown) return;
+        const bars = satisfactionBreakdown.querySelectorAll('.satisfaction-bar');
+        bars.forEach(bar => {
+            const barFill = bar.querySelector('.bar-fill');
+            const barValue = bar.querySelector('.bar-value');
+            const rating = parseInt(barFill.getAttribute('data-rating'));
+
+            if (distribution[rating] !== undefined) {
+                const percentage = distribution[rating];
+                barFill.style.width = percentage + '%';
+                barValue.textContent = percentage + '%';
+                barFill.classList.add('updating');
+                setTimeout(() => {
+                    barFill.classList.remove('updating');
+                }, 500);
+            }
+        });
+    }
+
+    function showNotification(feedbackData) {
+        const ratingText = feedbackData.rating >= 4 ? 'Great' :
+            feedbackData.rating === 3 ? 'Good' : 'Needs attention';
+
+        notificationText.textContent = `${ratingText} feedback from ${feedbackData.customer_name}`;
+        feedbackNotification.classList.add('show');
+        clearTimeout(notificationTimeout);
+        notificationTimeout = setTimeout(() => {
+            hideNotification();
+        }, 5000);
+    }
+
+    function hideNotification() {
+        feedbackNotification.classList.remove('show');
+        clearTimeout(notificationTimeout);
+    }
+
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+    }
+
+    document.addEventListener('click', function(event) {
+        const sidebar = document.getElementById('sidebar');
+        const menuToggle = document.querySelector('.menu-toggle');
+        if (!sidebar.contains(event.target) && !menuToggle.contains(event.target)) {
+            sidebar.classList.remove('active');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+        }
+    });
+
+    document.getElementById('generateQRBtn').addEventListener('click', function() {
+        window.location.href = '/generate-qr';
+    });
+
+    document.querySelectorAll('.nav-link:not(.logout-link)').forEach(link => {
+        link.addEventListener('click', function(e) {
+            if (this.getAttribute('href') === '#') {
+                e.preventDefault();
+                document.querySelectorAll('.sidebar-nav li').forEach(li => li.classList.remove('active'));
+                this.parentElement.classList.add('active');
+            }
+        });
+    });
+
+    document.querySelector('.logout-link').addEventListener('click', function(e) {
+        if (!confirm('Are you sure you want to logout?')) {
+            e.preventDefault();
+        }
+    });
+
+    setTimeout(() => {
+        if (connectionStatus.classList.contains('connected')) {
+            connectionStatus.style.opacity = '0.7';
+        }
+    }, 3000);
+
+
+
+
+    // Chart.js – Star Rating Distribution
+    const chartCanvas = document.getElementById('starRatingChart');
+    if (chartCanvas) {
+        const ctx = chartCanvas.getContext('2d');
+        const ratingData = [
+            {{ rating_distribution[5]|default(0)|int }},
+            {{ rating_distribution[4]|default(0)|int }},
+            {{ rating_distribution[3]|default(0)|int }},
+            {{ rating_distribution[2]|default(0)|int }},
+            {{ rating_distribution[1]|default(0)|int }}
+        ];
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['5 Stars', '4 Stars', '3 Stars', '2 Stars', '1 Star'],
+                datasets: [{
+                    label: 'Rating Distribution (%)',
+                    data: ratingData,
+                    backgroundColor: ['#4caf50', '#8bc34a', '#ffc107', '#ff9800', '#f44336'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    // ✅ Chart.js – Feedback Trend Chart (New)
+    const trendCanvas = document.getElementById('feedbackTrendChart');
+    if (trendCanvas) {
+        const ctxTrend = trendCanvas.getContext('2d');
+        const feedbackTrend = {{ feedback_trend | tojson }};
+        if (feedbackTrend.length > 0) {
+            const trendLabels = feedbackTrend.map(entry => entry.date);
+            const trendCounts = feedbackTrend.map(entry => entry.count);
+
+             new Chart(ctxTrend, {
+            type: 'line',
+            data: {
+                labels: trendLabels,
+                datasets: [{
+                    label: 'Feedbacks Received',
+                    data: trendCounts,
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: '#4bc0c0',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: true }
+                },
+                scales: {
+                    x: { title: { display: true, text: 'Date' }},
+                    y: { beginAtZero: true, title: { display: true, text: 'Feedback Count' }}
+                }
+            }
+        });
+    }  else {
+        console.log("No feedback trend data available");
+    }
+    }
+        const ratingCanvas = document.getElementById('ratingDistributionChart');
+    if (ratingCanvas) {
+        const ctxRating = ratingCanvas.getContext('2d');
+
+        const ratingData = [
+            {{ rating_distribution[5] | default(0) | int }},
+            {{ rating_distribution[4] | default(0) | int }},
+            {{ rating_distribution[3] | default(0) | int }},
+            {{ rating_distribution[2] | default(0) | int }},
+            {{ rating_distribution[1] | default(0) | int }}
+        ];
+
+        new Chart(ctxRating, {
+            type: 'bar',
+            data: {
+                labels: ['5 Stars', '4 Stars', '3 Stars', '2 Stars', '1 Star'],
+                datasets: [{
+                    label: 'Ratings (%)',
+                    data: ratingData,
+                    backgroundColor: ['#4caf50', '#8bc34a', '#ffc107', '#ff9800', '#f44336'],
+                    borderColor: '#333',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.raw + '%';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
 </body>
 </html>

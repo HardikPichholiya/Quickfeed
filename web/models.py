@@ -44,11 +44,11 @@ class User(BaseUser):
     
     def get_feedback_count(self):
         """Get total number of feedbacks given by this user"""
-        return self.feedbacks.count()
+        return len(self.feedbacks)
     
     def get_recent_feedback(self, limit=5):
         """Get recent feedback given by this user"""
-        return self.feedbacks.order_by(Feedback.created_at.desc()).limit(limit).all()
+        return sorted(self.feedbacks, key=lambda x: x.created_at, reverse=True)[:limit]
 
 
 class Shopkeeper(BaseUser):
@@ -119,7 +119,8 @@ class Shopkeeper(BaseUser):
     def get_recent_feedback(self, limit=10):
         """Get recent feedback for this shopkeeper"""
         return self.received_feedbacks.order_by(Feedback.created_at.desc()).limit(limit).all()
-    
+
+
 class Item(db.Model):
     __tablename__ = 'items'
 
@@ -129,6 +130,7 @@ class Item(db.Model):
     price = db.Column(db.Float, nullable=False)
     shopkeeper = db.relationship('Shopkeeper', backref=db.backref('items', lazy=True))
 
+# In models.py, update the Bill class
 class Bill(db.Model):
     __tablename__ = 'bills'
 
@@ -136,6 +138,7 @@ class Bill(db.Model):
     shopkeeper_id = db.Column(db.Integer, db.ForeignKey('shopkeepers.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     total_price = db.Column(db.Float, nullable=False)
+    customer_email = db.Column(db.String(120), nullable=True)  # Add this line
     loyalty_code = db.Column(db.String(4), unique=True, nullable=True)
     loyalty_used = db.Column(db.Boolean, default=False)
     loyalty_points_earned = db.Column(db.Integer, default=0)
@@ -157,7 +160,7 @@ class BillItem(db.Model):
 class Feedback(db.Model):
     """Feedback given by users to shopkeepers."""
     __tablename__ = 'feedbacks'  # Changed from 'feedback' to 'feedbacks'
-    
+    customer_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=True)
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text, nullable=False)
@@ -166,11 +169,14 @@ class Feedback(db.Model):
     shopkeeper_id = db.Column(db.Integer, 
                              db.ForeignKey('shopkeepers.id', ondelete='CASCADE'), 
                              nullable=False)
-    # user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
-    # Fields for anonymous feedback
+    
     customer_name = db.Column(db.String(100), nullable=False)
     customer_email = db.Column(db.String(120), nullable=True)
-    
+    customer_user = db.relationship('User', 
+                                  foreign_keys=[customer_email],
+                                  primaryjoin='Feedback.customer_email == User.email',
+                                  backref='feedbacks',
+                                  lazy=True)
     # Add database constraints
     __table_args__ = (
         db.CheckConstraint('rating >= 1 AND rating <= 5', name='rating_range'),

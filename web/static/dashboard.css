@@ -14,6 +14,27 @@ body {
 }
 
 /* Sidebar Styles */
+.back-btn {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background: #f0f4f8;
+    border-radius: 6px;
+    color: #4a5568;
+    text-decoration: none;
+    margin-right: 1rem;
+    transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+    background: #e2e8f0;
+    color: #2d3748;
+}
+
+.back-btn i {
+    margin-right: 0.5rem;
+    font-size: 0.9rem;
+}
 .sidebar {
     position: fixed;
     top: 0;
@@ -327,6 +348,21 @@ body {
 }
 
 /* Charts Section */
+.view-more-btn {
+    background: #4caf50;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.3s;
+}
+
+.view-more-btn:hover {
+    background: #3d8b40;
+}
 .charts-section {
     margin-bottom: 48px;
 }
