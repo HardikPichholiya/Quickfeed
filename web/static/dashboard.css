@@ -266,8 +266,14 @@ body {
     font-size: 20px;
     font-weight: 600;
     color: #1a1a1a;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
+    padding-top: 5px;
     letter-spacing: -0.3px;
+   }
+
+#tushar{
+    padding-left: 70px;
+    padding-top: 40px;
 }
 
 /* Metrics Section */
@@ -499,6 +505,7 @@ body {
 /* Feedback Section */
 .feedback-section {
     margin-bottom: 48px;
+    position: relative;
 }
 
 .section-header {
@@ -514,6 +521,7 @@ body {
     font-size: 24px;
     font-weight: 700;
     color: #1f2937;
+    /* position: relative; */
 }
 
 .view-all-link {
@@ -524,16 +532,17 @@ body {
     padding: 8px 16px;
     border-radius: 8px;
     transition: all 0.2s ease;
-    border: 1px solid #e5e7eb;
+    padding-right: 50px;
 }
 
-.view-all-link:hover {
-    background: #f8fafc;
-    color: #1d4ed8;
-    border-color: #3b82f6;
-}
 
 .feedback-list {
+    position: absolute;
+    top: 50px;
+    padding-top: 50px;
+    padding-left: 70px;
+
+
     display: flex;
     flex-direction: column;
     gap: 20px;

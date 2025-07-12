@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,258 +11,517 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <h2>Quickfeed</h2>
+            </div>
+            <button class="close-btn" onclick="toggleSidebar()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <nav class="sidebar-nav">
+            <ul>
+                <li class="active">
+                    <a href="#" class="nav-link">
+                        <i class="fas fa-home"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="logout-item">
+                    <a href="/auth/logout" class="nav-link logout-link">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="menu-toggle" onclick="toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </div>
+                <div class="brand-logo">
+                    <h1>Quickfeed</h1>
+                    <span class="brand-tagline">Real-time feedback, real-time growth</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="customer-container">
+            <!-- Welcome Section -->
+            <section class="welcome-section">
+                <h2>Welcome {{ current_user.first_name }} {{ current_user.last_name }}!</h2>
+                <p>Here's what's happening with your feedback today.</p>
+            </section>
+
+            <!-- Main Dashboard Content -->
+            <div class="dashboard-content">
+                <div class="maincard">
+                                    <!-- Feedback Card (Left - Larger) -->
+                <div class="feedback-card">
+                    <div class="card-header">
+                        <h2>Your Recent Feedback</h2>
+                        {% if recent_feedbacks %}
+                        <a href="#" class="view-all-link">View All</a>
+                        {% endif %}
+                    </div>
+
+                    <div class="feedback-list">
+                        {% if recent_feedbacks %}
+                        {% for feedback in recent_feedbacks %}
+                        <div class="feedback-item">
+                            <div class="feedback-rating">
+                                {% for i in range(1, 6) %}
+                                {% if i <= feedback.rating %}
+                                <i class="fas fa-star"></i>
+                                {% else %}
+                                <i class="far fa-star"></i>
+                                {% endif %}
+                                {% endfor %}
+                                <span class="rating-number">({{ feedback.rating }})</span>
+                            </div>
+
+                            <div class="feedback-content">
+                                <div class="feedback-text">
+                                    <strong>{{ feedback.title }}</strong>:
+                                    {{ feedback.content[:100] }}{% if feedback.content|length > 100 %}...{% endif %}
+                                </div>
+                                <div class="feedback-meta">
+                                    <span class="shop-name">{{ feedback.shopkeeper.shopname }}</span>
+                                    <span class="feedback-time">{{ feedback.created_at.strftime('%Y-%m-%d') }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="no-feedback">
+                            <i class="fas fa-comment-dots"></i>
+                            <p>You haven't given any feedback yet.</p>
+                            <p>Share your experience with businesses to help them improve!</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                </div>
+
+
+                <!-- Loyalty Points Card (Right - Smaller) -->
+                <div class="loyalty-card">
+                    <!-- Redeem Section -->
+                    <div class="redeem-section">
+                        <h3><i class="fas fa-gift"></i> Redeem Loyalty Code</h3>
+                        <form method="POST" action="{{ url_for('customer.redeem_code') }}">
+                            <div class="redeem-form">
+                                <input type="text" name="code" placeholder="Enter loyalty code" required>
+                                <button type="submit" class="btn-redeem">Redeem</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Points Section -->
+                    <div class="points-section">
+                        <div class="points-display">
+                            <div class="points-icon">
+                                <i class="fas fa-coins"></i>
+                            </div>
+                            <div class="points-info">
+                                <h3>Your Points</h3>
+                                <div class="points-value">{{ current_user.points }}</div>
+                                <p class="points-desc">Earn points by giving feedback!</p>
+                            </div>
+                        </div>
+                        
+                        <div class="points-conversion">
+                            <div class="conversion-info">
+                                <i class="fas fa-exchange-alt"></i>
+                                <span>1000 points = ₹50 discount</span>
+                            </div>
+                        </div>
+
+                        <div class="feedback-count">
+                            <div class="count-item">
+                                <i class="fas fa-comment-alt"></i>
+                                <div>
+                                    <span class="count-number">{{ feedback_count }}</span>
+                                    <span class="count-label">Feedback Given</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <style>
-        /* Additional styles for customer dashboard */
+        *{
+            margin: 0;
+            padding: 0;
+        }
+        /* Customer Dashboard Styles */
         .customer-container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
         }
-        
-        .welcome-section {
-            background-color: #ffffff;
-            border-radius: 12px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+
+        .maincard{
+            width: 70%;
         }
-        
+
+        .welcome-section {
+            /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
+            /* color: white; */
+            /* border-radius: 16px; */
+            padding: 40px;
+            margin-bottom: 30px;
+            position: relative;
+            right: 100px;
+            
+            /* top: 50px; */
+            /* box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); */
+        }
+
         .welcome-section h1 {
             font-size: 2.5rem;
-            margin-bottom: 15px;
-            color: #2d3748;
+            margin-bottom: 10px;
+            font-weight: 600;
         }
-        
+
         .welcome-section p {
             font-size: 1.2rem;
-            color: #718096;
-            margin-bottom: 25px;
+            opacity: 0.9;
+            margin: 0;
         }
-        
-        .metrics-section {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 25px;
-            margin-bottom: 40px;
+
+        .dashboard-content {
+            position: relative;
+            bottom: 50px;
+            right: 100px;
+            width: 100vw;
+            display: flex;
+            /* grid-template-columns: 5fr 1fr; */
+            gap: 30px;
+            justify-content: space-around;
+            /* align-items: ; */
         }
-        
-        .metric-card {
-            background-color: #ffffff;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            text-align: center;
-        }
-        
-        .metric-card h3 {
-            font-size: 1.3rem;
-            margin-bottom: 15px;
-            color: #4a5568;
-        }
-        
-        .metric-value {
-            font-size: 3rem;
-            font-weight: 700;
-            color: #3182ce;
-            margin-bottom: 10px;
-        }
-        
-        .feedback-section {
-            background-color: #ffffff;
-            border-radius: 12px;
+
+        /* Feedback Card Styles */
+        .feedback-card {
+            background: white;
+            border-radius: 16px;
             padding: 30px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            min-height: 500px;
         }
-        
-        .section-header {
+
+        .card-header {
+            /* position: relative; */
+            /* right: 80px; */
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f1f5f9;
+            /* width: 60vw; */
         }
-        
-        .section-header h2 {
+
+        .card-header h2 {
             font-size: 1.8rem;
-            color: #2d3748;
+            color: #1e293b;
+            margin: 0;
         }
-        
+
         .view-all-link {
-            color: #3182ce;
+            color: #3b82f6;
             text-decoration: none;
             font-weight: 600;
+            transition: color 0.3s;
         }
-        
+
+        .view-all-link:hover {
+            color: #2563eb;
+        }
+
         .feedback-list {
-            display: grid;
+            display: flex;
+            flex-direction: column;
             gap: 20px;
         }
-        
+
         .feedback-item {
-            background-color: #f7fafc;
-            border-radius: 10px;
+            background: #f8fafc;
+            border-radius: 12px;
             padding: 20px;
-            border-left: 4px solid #3182ce;
+            border-left: 4px solid #3b82f6;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-        
+
+        .feedback-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
         .feedback-rating {
             margin-bottom: 15px;
         }
-        
+
         .feedback-rating .fa-star {
-            color: gold;
-            font-size: 1.2rem;
-        }
-        
-        .feedback-content {
-            margin-top: 10px;
-        }
-        
-        .feedback-text {
+            color: #fbbf24;
             font-size: 1.1rem;
-            line-height: 1.5;
-            color: #2d3748;
+            margin-right: 2px;
+        }
+
+        .rating-number {
+            margin-left: 8px;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .feedback-text {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #1e293b;
             margin-bottom: 15px;
         }
-        
+
         .feedback-meta {
             display: flex;
             justify-content: space-between;
-            color: #718096;
+            color: #64748b;
             font-size: 0.9rem;
         }
-        
+
+        .shop-name {
+            font-weight: 600;
+        }
+
         .no-feedback {
             text-align: center;
-            padding: 40px;
-            color: #a0aec0;
-            font-size: 1.2rem;
+            padding: 60px 20px;
+            color: #64748b;
         }
-        
-        .action-bar {
+
+        .no-feedback i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: #cbd5e1;
+        }
+
+        .no-feedback p {
+            font-size: 1.1rem;
+            margin: 10px 0;
+        }
+
+        /* Loyalty Card Styles */
+        .loyalty-card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            height: fit-content;
+            width: 400px;
+        }
+
+        .redeem-section {
+            margin-bottom: 30px;
+            padding-bottom: 25px;
+            border-bottom: 2px solid #f1f5f9;
+        }
+
+        .redeem-section h3 {
+            font-size: 1.3rem;
+            color: #1e293b;
+            margin-bottom: 15px;
             display: flex;
-            justify-content: space-between;
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #e2e8f0;
+            align-items: center;
+            gap: 8px;
         }
-        
-        .btn-primary {
-            background-color: #3182ce;
+
+        .redeem-section h3 i {
+            color: #f59e0b;
+        }
+
+        .redeem-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .redeem-form input {
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .redeem-form input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .btn-redeem {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
             color: white;
             border: none;
-            padding: 12px 25px;
+            padding: 12px 20px;
             border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-        
-        .btn-primary:hover {
-            background-color: #2b6cb0;
+
+        .btn-redeem:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
         }
-        
-        .btn-logout {
-            background-color: #e53e3e;
+
+        .points-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .points-display {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 20px;
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            border-radius: 12px;
             color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.3s;
         }
-        
-        .btn-logout:hover {
-            background-color: #c53030;
+
+        .points-icon {
+            font-size: 2rem;
+        }
+
+        .points-info h3 {
+            font-size: 1.1rem;
+            margin: 0 0 5px 0;
+        }
+
+        .points-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .points-desc {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin: 0;
+        }
+
+        .points-conversion {
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .conversion-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: #475569;
+            font-weight: 500;
+        }
+
+        .conversion-info i {
+            color: #3b82f6;
+        }
+
+        .feedback-count {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .count-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .count-item i {
+            font-size: 1.5rem;
+            color: #3b82f6;
+        }
+
+        .count-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b;
+            display: block;
+        }
+
+        .count-label {
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .dashboard-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .welcome-section {
+                padding: 25px;
+            }
+            
+            .welcome-section h1 {
+                font-size: 2rem;
+            }
+            
+            .feedback-card{
+                 padding: 20px;
+                 /* position: relative; */
+                 /* right: 300px; */
+            }
+
+
+            .loyalty-card {
+                padding: 20px;
+            }
         }
     </style>
-</head>
-<body>
-    <div class="customer-container">
-        <!-- Welcome Section -->
-        <section class="welcome-section">
-    <h1>Hi, {{ current_user.first_name }} {{ current_user.last_name }}!</h1>
-    <p>Welcome to your QuickFeed Customer Dashboard</p>
-    
-    <!-- Add redemption form -->
-    <div class="redeem-form" style="margin-top: 20px; background: #f8f9fa; padding: 15px; border-radius: 8px;">
-        <h3>Redeem Loyalty Code</h3>
-        <form method="POST" action="{{ url_for('customer.redeem_code') }}">
-            <div style="display: flex; gap: 10px;">
-                <input type="text" name="code" placeholder="Enter loyalty code" 
-                       style="flex: 1; padding: 10px; border: 1px solid #e2e8f0; border-radius: 4px;">
-                <button type="submit" class="btn-primary">Redeem</button>
-            </div>
-        </form>
-    </div>
-</section>
 
-<!-- Update points display -->
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
 
-       <!-- Metrics Section -->
-        <div class="metric-card">
-    <h3>Total Points</h3>
-    <div class="metric-value">{{ current_user.points }}</div>
-    <p>Earn points by giving feedback!</p>
-    <p>1000 point = ₹50 discount on next purchase</p>
-</div>
-            <div class="metric-card">
-                <h3>Feedback Given</h3>
-                <div class="metric-value">{{ feedback_count }}</div>
-                <p>Your valuable feedback helps businesses improve</p>
-            </div>
-        </div>
-
-        <!-- Recent Feedback Section -->
-        <section class="feedback-section">
-            <div class="section-header">
-                <h2>Your Recent Feedback</h2>
-                {% if recent_feedbacks %}
-                <a href="#" class="view-all-link">View All</a>
-                {% endif %}
-            </div>
-            
-            <div class="feedback-list">
-                {% if recent_feedbacks %}
-                    {% for feedback in recent_feedbacks %}
-                    <div class="feedback-item">
-                        <div class="feedback-rating">
-                            {% for i in range(1, 6) %}
-                                {% if i <= feedback.rating %}
-                                    <i class="fas fa-star"></i>
-                                {% else %}
-                                    <i class="far fa-star"></i>
-                                {% endif %}
-                            {% endfor %}
-                            <span style="margin-left: 8px;">({{ feedback.rating }})</span>
-                        </div>
-                        
-                        <div class="feedback-content">
-                            <div class="feedback-text">
-                                <strong>{{ feedback.title }}</strong>: 
-                                {{ feedback.content[:100] }}{% if feedback.content|length > 100 %}...{% endif %}
-                            </div>
-                            <div class="feedback-meta">
-                                <span class="shop-name">{{ feedback.shopkeeper.shopname }}</span>
-                                <span class="feedback-time">{{ feedback.created_at.strftime('%Y-%m-%d') }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="no-feedback">
-                        <p>You haven't given any feedback yet.</p>
-                        <p>Share your experience with businesses to help them improve!</p>
-                    </div>
-                {% endif %}
-            </div>
-        </section>
-
-        <!-- Action Bar -->
-        <div class="action-bar">
-            
-            <a href="{{ url_for('auth.logout') }}" class="btn-logout">Logout</a>
-        </div>
-    </div>
+        document.addEventListener('click', function (event) {
+            const sidebar = document.getElementById('sidebar');
+            const menuToggle = document.querySelector('.menu-toggle');
+            if (!sidebar.contains(event.target) && !menuToggle.contains(event.target)) {
+                sidebar.classList.remove('active');
+                document.getElementById('sidebarOverlay').classList.remove('active');
+            }
+        });
+    </script>
 </body>
+
 </html>

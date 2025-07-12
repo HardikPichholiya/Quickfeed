@@ -1,13 +1,19 @@
-<div class="receipt">
+<div class="receipt" id="printable-receipt">
+    <!-- Add shop name at top -->
+    <div class="shop-header" style="text-align: center; margin-bottom: 15px;">
+        <h3>{{ shop_name }}</h3>
+        <p style="margin-top: 5px; color: #666;">{{ shop_address }}</p>
+    </div>
+    
     <h4 class="receipt-title">🧾 Bill Receipt</h4>
 
     {% for entry in selected_items %}
-    <div class="receipt-item">
-        <div class="receipt-item-info">
-            <div class="item-name">{{ entry.item.name }} (x{{ entry.quantity }})</div>
-            <div class="item-price">₹{{ "%.2f"|format(entry.item_total) }}</div>
+        <div class="receipt-item">
+            <div class="receipt-item-info">
+                <div class="item-name">{{ entry.item.name }} (x{{ entry.quantity }})</div>
+                <div class="item-price">₹{{ "%.2f"|format(entry.item_total) }}</div>
+            </div>
         </div>
-    </div>
     {% endfor %}
 
     <div class="receipt-total">
@@ -16,27 +22,53 @@
             <div class="total-price"><strong>₹{{ "%.2f"|format(total_price) }}</strong></div>
         </div>
     </div>
-    {% if bill.loyalty_code %}
+    
+    {% if bill.customer_email %}
     <div class="receipt-loyalty">
-        <strong>Loyalty Code:</strong> {{ bill.loyalty_code }}
+        <div class="loyalty-info">
+            <div class="loyalty-label">Customer Email:</div>
+            <div class="loyalty-value">{{ bill.customer_email }}</div>
+        </div>
+        {% if bill.loyalty_code %}
+        <div class="loyalty-info">
+            <div class="loyalty-label">Loyalty Code:</div>
+            <div class="loyalty-value">{{ bill.loyalty_code }}</div>
+        </div>
+        {% endif %}
     </div>
     {% endif %}
-
+    
     <div class="receipt-footer">
         <em>Generated on {{ now().strftime('%d %B %Y, %I:%M %p') }}</em>
     </div>
 </div>
 
-<!-- Add points information -->
-{% if bill.customer_email and bill.loyalty_code %}
-<div class="loyalty-info">
-    <div class="loyalty-info">
-        <div class="loyalty-label">Points Earned:</div>
-        <div class="loyalty-value">{{ bill.loyalty_points_earned }}</div>
-    </div>
-    <div class="loyalty-info">
-        <div class="loyalty-label">Loyalty Code:</div>
-        <div class="loyalty-value">{{ bill.loyalty_code }}</div>
-    </div>
+<!-- Add print button below bill -->
+<div style="text-align: center; margin-top: 20px;">
+    <button onclick="printReceipt()" class="btn-add" style="padding: 10px 20px;">
+        <i class="fas fa-print"></i> Print Bill
+    </button>
 </div>
-{% endif %}
+
+<style>
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #printable-receipt, #printable-receipt * {
+        visibility: visible;
+    }
+    #printable-receipt {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+}
+</style>
+
+<script>
+function printReceipt() {
+    window.print();
+}
+</script>

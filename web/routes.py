@@ -593,7 +593,8 @@ def generate_bill():
             selected_items=selected_items,
             total_price=total_price,
             bill=bill,
-            now=datetime.now
+            now=datetime.now,
+            shop_name = current_user.shopname
         )
 
     # Fallback: Redirect to bill page
