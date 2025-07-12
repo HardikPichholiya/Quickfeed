@@ -259,8 +259,9 @@
 
         .feedback-list {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             gap: 20px;
+            position: relative;
         }
 
         .feedback-item {
@@ -269,6 +270,9 @@
             padding: 20px;
             border-left: 4px solid #3b82f6;
             transition: transform 0.2s, box-shadow 0.2s;
+            position: absolute;
+            top: 20px;
+            /* bottom: 20px; */
         }
 
         .feedback-item:hover {
