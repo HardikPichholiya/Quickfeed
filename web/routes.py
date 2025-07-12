@@ -483,6 +483,11 @@ def public_feedback(username):
         return redirect(url_for('main.homepage'))
 from flask import request, jsonify, render_template
 
+@main.route('/feedback/success')
+def feedback_success():
+    """Feedback submission success page"""
+    return render_template('feedback/success.html')
+
 # In routes.py, update the generate_bill route
 @main.route('/dashboard/generate-bill', methods=['GET', 'POST'])
 @login_required
@@ -524,20 +529,11 @@ def generate_bill():
             flash('Please select at least one item to generate a bill.', 'warning')
             return redirect(url_for('main.generate_bill'))
 
-    # Check if any items were selected
-    if not selected_items:
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return '<div class="alert alert-warning">Please select at least one item to generate a bill.</div>', 400
-        else:
-            flash('Please select at least one item to generate a bill.', 'warning')
-            return redirect(url_for('main.generate_bill'))
-
     from datetime import datetime
     from web.models import Bill, BillItem
     from web.utils import generate_unique_loyalty_code
     from web.models import Bill, BillItem
 
-    # Create the bill
     # Create the bill
     bill = Bill(
         shopkeeper_id=current_user.id,
@@ -547,8 +543,9 @@ def generate_bill():
     
     # Generate loyalty code if customer email is provided
     if customer_email:
+        print("Customer email:", customer_email)
         bill.loyalty_code = generate_unique_loyalty_code()
-    
+        print("Generated code:", bill.loyalty_code)
     db.session.add(bill)
     db.session.flush()  # To get the bill ID
 
@@ -582,7 +579,6 @@ def generate_bill():
             'partials/bill_snippet.html',
             selected_items=selected_items,
             total_price=total_price,
-            bill=bill,
             bill=bill,
             now=datetime.now
         )
@@ -678,10 +674,6 @@ def submit_feedback():
     db.session.commit()
     return redirect(url_for('main.feedback_success'))
 
-@main.route('/feedback/success')
-def feedback_success():
-    """Feedback submission success page"""
-    return render_template('feedback/success.html')
 
 # 1. Fix the create_feedback route for logged-in users
 @main.route('/my-feedback', methods=['GET', 'POST'])
