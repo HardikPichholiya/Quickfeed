@@ -96,7 +96,7 @@
         <header class="header">
             <div class="header-left">
                 <div class="menu-toggle" onclick="toggleSidebar()">
-                    <i class="fas fa-user"></i>
+                    <i class="fas fa-bars"></i>
                 </div>
                 <div class="brand-logo">
                     <h1>Quickfeed</h1>
@@ -220,12 +220,9 @@
                 <div class="section-header">
                     <h3 class="section-title">Recent Feedback</h3>
                     <div>
-            <a href="{{ url_for('main.analytics') }}" class="view-more-btn" style="margin-right: 10px;">
-                Analytics
-            </a>
-            <a href="/dashboard/my-feedback" class="view-all-link">
+            <!-- <a href="/dashboard/my-feedback" class="view-all-link">
                 View all
-            </a>
+            </a>  -->
         </div>
                 <div class="feedback-list" id="feedbackList">
                     {% if all_recent_feedback %}

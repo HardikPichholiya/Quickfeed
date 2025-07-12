@@ -9,6 +9,18 @@ import base64
 from web import db, socketio
 from web.models import User, Feedback, Shopkeeper , Item, Bill
 from web.forms import FeedbackForm, PublicFeedbackForm
+# Add to top of routes.py
+import secrets
+
+def generate_unique_loyalty_code(length=6):
+    """Generate a unique alphanumeric loyalty code"""
+    while True:
+        code = ''.join(secrets.choice('ABCDEFGHJKLMNPQRSTUVWXYZ23456789') for _ in range(length))
+        # Check if code is unique
+        if not Bill.query.filter_by(loyalty_code=code).first():
+            return code
+
+
 
 main = Blueprint('main', __name__)
 customer = Blueprint('customer', __name__)
@@ -546,6 +558,7 @@ def generate_bill():
         print("Customer email:", customer_email)
         bill.loyalty_code = generate_unique_loyalty_code()
         print("Generated code:", bill.loyalty_code)
+        bill.loyalty_points_earned = int(total_price * 0.05)
     db.session.add(bill)
     db.session.flush()  # To get the bill ID
 
@@ -585,6 +598,43 @@ def generate_bill():
 
     # Fallback: Redirect to bill page
     return redirect(url_for('main.generate_bill'))
+
+@customer.route('/redeem', methods=['POST'])
+@login_required
+def redeem_code():
+    try:
+        code = request.form.get('code').strip()
+        if not code:
+            flash('Please enter a loyalty code', 'danger')
+            return redirect(url_for('customer.dashboard'))
+        
+        # Find bill with this loyalty code
+        bill = Bill.query.filter_by(loyalty_code=code, loyalty_used=False).first()
+        if not bill:
+            flash('Invalid or expired loyalty code', 'danger')
+            return redirect(url_for('customer.dashboard'))
+        
+        # Verify customer email matches
+        if bill.customer_email != current_user.email:
+            flash('This code is not associated with your account', 'danger')
+            return redirect(url_for('customer.dashboard'))
+        
+        # Add points to customer
+        current_user.points += bill.loyalty_points_earned
+        bill.loyalty_used = True
+        
+        db.session.commit()
+        
+        flash(f'Success! {bill.loyalty_points_earned} points added to your account', 'success')
+        return redirect(url_for('customer.dashboard'))
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error redeeming code: {e}")
+        flash('An error occurred. Please try again.', 'danger')
+        return redirect(url_for('customer.dashboard'))
+    
+
 
 
 @main.route('/dashboard/item-setup', methods=['GET'])

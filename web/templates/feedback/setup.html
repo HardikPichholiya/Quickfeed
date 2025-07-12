@@ -2,58 +2,6 @@
 {% block title %}Item Setup - Quickfeed{% endblock %}
 
 {% block content %}
- <!-- Sidebar -->
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <div class="sidebar-logo">
-                <h2>Quickfeed</h2>
-            </div>
-            <button class="close-btn" onclick="toggleSidebar()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <nav class="sidebar-nav">
-            <ul>
-                <li class="active">
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-home"></i>
-                        <span>Dashboard</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/dashboard/my-feedback" class="nav-link">
-                        <i class="fas fa-comment-dots"></i>
-                        <span>All Feedback</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" id="analytics" class="nav-link">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Analytics</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/dashboard/generate-bill" id="settings" class="nav-link">
-                        <i class="fas fa-receipt"></i>
-                        <span>Billing</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/dashboard/item-setup" id="settings" class="nav-link">
-                        <i class="fas fa-cog"></i>
-                        <span>Setup</span>
-                    </a>
-                </li>
-                <li class="logout-item">
-                    <a href="/auth/logout" class="nav-link logout-link">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span>Logout</span>
-                    </a>
-                </li>
-            </ul>
-        </nav>
-    </div>
-
     <!-- Sidebar Overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 

@@ -41,7 +41,7 @@ class BaseUser(UserMixin, db.Model):
 class User(BaseUser):
     """Regular customer users who can give feedback."""
     __tablename__ = 'users'  
-    
+    points = db.Column(db.Integer, default=0)
     def get_feedback_count(self):
         """Get total number of feedbacks given by this user"""
         return len(self.feedbacks)

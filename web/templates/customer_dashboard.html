@@ -180,17 +180,31 @@
     <div class="customer-container">
         <!-- Welcome Section -->
         <section class="welcome-section">
-            <h1>Hi, {{ current_user.first_name }} {{ current_user.last_name }}!</h1>
-            <p>Welcome to your QuickFeed Customer Dashboard</p>
-        </section>
-
-        <!-- Metrics Section -->
-        <div class="metrics-section">
-            <div class="metric-card">
-                <h3>Total Points</h3>
-                <div class="metric-value">0</div>
-                <p>Earn points by giving feedback!</p>
+    <h1>Hi, {{ current_user.first_name }} {{ current_user.last_name }}!</h1>
+    <p>Welcome to your QuickFeed Customer Dashboard</p>
+    
+    <!-- Add redemption form -->
+    <div class="redeem-form" style="margin-top: 20px; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+        <h3>Redeem Loyalty Code</h3>
+        <form method="POST" action="{{ url_for('customer.redeem_code') }}">
+            <div style="display: flex; gap: 10px;">
+                <input type="text" name="code" placeholder="Enter loyalty code" 
+                       style="flex: 1; padding: 10px; border: 1px solid #e2e8f0; border-radius: 4px;">
+                <button type="submit" class="btn-primary">Redeem</button>
             </div>
+        </form>
+    </div>
+</section>
+
+<!-- Update points display -->
+
+       <!-- Metrics Section -->
+        <div class="metric-card">
+    <h3>Total Points</h3>
+    <div class="metric-value">{{ current_user.points }}</div>
+    <p>Earn points by giving feedback!</p>
+    <p>1000 point = ₹50 discount on next purchase</p>
+</div>
             <div class="metric-card">
                 <h3>Feedback Given</h3>
                 <div class="metric-value">{{ feedback_count }}</div>
