@@ -25,13 +25,13 @@ def login():
         if shopkeeper and check_password_hash(shopkeeper.password_hash, form.password.data):
             session['shop_name'] = shopkeeper.shopname   # ✅ Store shopname in session
             login_user(shopkeeper)
-            flash('Shopkeeper login successful!', 'success')
+            # flash('Shopkeeper login successful!', 'success')
             return redirect(url_for('main.dashboard'))
 
         elif customer and check_password_hash(customer.password_hash, form.password.data):
             session.pop('shop_name', None)
             login_user(customer)
-            flash('Customer login successful!', 'success')
+            # flash('Customer login successful!', 'success')
             return redirect(url_for('customer.dashboard'))
 
         else:
@@ -63,7 +63,7 @@ def signup():
         db.session.add(user)
         db.session.commit()
         
-        flash('Account created successfully! Please log in.', 'success')
+        flash('Account created successfully! Please login.', 'success')
         return redirect(url_for('auth.login'))
     
     return render_template('auth/signup.html', form=form)
@@ -103,5 +103,5 @@ def signupshop():
 @login_required
 def logout():
     logout_user()
-    flash('You have been logged out.', 'info')
+    # flash('You have been logged out.', 'info')
     return redirect(url_for('main.homepage'))

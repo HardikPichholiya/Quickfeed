@@ -7,7 +7,7 @@ import qrcode
 import io
 import base64
 from web import db, socketio
-from web.models import User, Feedback, Shopkeeper , Item, Bill
+from web.models import BillItem, User, Feedback, Shopkeeper , Item, Bill
 from web.forms import FeedbackForm, PublicFeedbackForm
 # Add to top of routes.py
 import secrets
@@ -277,37 +277,32 @@ def get_time_ago(timestamp):
 
 
 def require_shopkeeper(f):
-    """Decorator to ensure current user is a shopkeeper"""
     def decorated_function(*args, **kwargs):
         try:
-            if not current_user.is_authenticated:
-                flash('Please log in to access this page.', 'warning')
-                return redirect(url_for('auth.login'))
-            
-            # Check if the current user is actually a shopkeeper
+            print("DEBUG: require_shopkeeper - current_user:", current_user)
+            print("DEBUG: require_shopkeeper - is_authenticated:", current_user.is_authenticated)
             shopkeeper = Shopkeeper.query.get(current_user.id)
+            print("DEBUG: require_shopkeeper - shopkeeper:", shopkeeper)
+            if not current_user.is_authenticated:
+                flash('Please login to access this page.', 'warning')
+                return redirect(url_for('auth.login'))
             if not shopkeeper:
-                # Check if they're a regular user
                 user = User.query.get(current_user.id)
+                print("DEBUG: require_shopkeeper - user:", user)
                 if user:
                     flash('Access denied. This page is for shopkeepers only.', 'danger')
                     return redirect(url_for('customer.dashboard'))
                 else:
                     flash('Account not found. Please contact support.', 'danger')
                     return redirect(url_for('auth.login'))
-            
-            # Store shopkeeper info in session for later use
             session['shopkeeper_id'] = shopkeeper.id
             session['shopkeeper_username'] = shopkeeper.username
             session['is_shopkeeper'] = True
-            
             return f(*args, **kwargs)
-            
         except Exception as e:
             print(f"Error in require_shopkeeper decorator: {e}")
             flash('An error occurred while verifying your account.', 'danger')
             return redirect(url_for('auth.login'))
-    
     decorated_function.__name__ = f.__name__
     return decorated_function
 
@@ -344,7 +339,7 @@ def dashboard():
                              feedback_count=feedback_count)
     except Exception as e:
         print(f"Error loading customer dashboard: {e}")
-        flash('Error loading dashboard. Please try again.', 'danger')
+        # flash('Error loading dashboard. Please try again.', 'danger')
         return redirect(url_for('main.homepage'))
 
 
@@ -355,7 +350,7 @@ def dashboard():
     try:
         shopkeeper = Shopkeeper.query.get(current_user.id)
         if not shopkeeper:
-            flash('Shopkeeper account not found.', 'danger')
+            # flash('Shopkeeper account not found.', 'danger')
             return redirect(url_for('auth.login'))
 
         # Get recent feedback
@@ -367,7 +362,7 @@ def dashboard():
         stats = StatisticsService.get_shopkeeper_stats(shopkeeper.id)
 
         if stats is None:
-            flash('Error loading dashboard statistics.', 'warning')
+            # flash('Error loading dashboard statistics.', 'warning')
             stats = {
                 'total_feedbacks': 0,
                 'average_rating': 0,
@@ -398,7 +393,7 @@ def dashboard():
                                )
     except Exception as e:
         print(f"Error loading dashboard: {e}")
-        flash('Error loading dashboard. Please try again.', 'danger')
+        # flash('Error loading dashboard. Please try again.', 'danger')
         return render_template('dashboard.html',
                                recent_feedback=[],
                                shopkeeper=None,
@@ -441,12 +436,12 @@ def public_feedback(username):
         # Get shopkeeper by username with proper validation
         shopkeeper = Shopkeeper.query.filter_by(username=username).first()
         if not shopkeeper:
-            flash('Shop not found.', 'danger')
+            # flash('Shop not found.', 'danger')
             abort(404)
         
         # Check if shopkeeper is active
         if not shopkeeper.is_active:
-            flash('This shop is currently inactive.', 'warning')
+            # flash('This shop is currently inactive.', 'warning')
             abort(404)
         
         form = PublicFeedbackForm()
@@ -471,14 +466,14 @@ def public_feedback(username):
                     if stats:
                         FeedbackService.broadcast_feedback_update(feedback, stats)
                     
-                    flash('Thank you for your feedback!', 'success')
+                    # flash('Thank you for your feedback!', 'success')
                     return redirect(url_for('main.feedback_success'))
                     
                 except ValueError as ve:
                     flash(f'Validation error: {str(ve)}', 'danger')
                 except Exception as e:
                     print(f"Error creating feedback: {e}")
-                    flash('Error submitting feedback. Please try again.', 'danger')
+                    # flash('Error submitting feedback. Please try again.', 'danger')
             else:
                 # Display form errors
                 for field, errors in form.errors.items():
@@ -491,7 +486,7 @@ def public_feedback(username):
                              
     except Exception as e:
         print(f"Error in public_feedback route: {e}")
-        flash('An error occurred. Please try again.', 'danger')
+        # flash('An error occurred. Please try again.', 'danger')
         return redirect(url_for('main.homepage'))
 from flask import request, jsonify, render_template
 
@@ -503,102 +498,98 @@ def feedback_success():
 # In routes.py, update the generate_bill route
 @main.route('/dashboard/generate-bill', methods=['GET', 'POST'])
 @login_required
-@require_shopkeeper
 def generate_bill():
-    items = Item.query.filter_by(shopkeeper_id=current_user.id).all()
+    try:
+        # Manual shopkeeper verification
+        shopkeeper = Shopkeeper.query.get(current_user.id)
+        if not shopkeeper:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'error': 'Only shopkeepers can generate bills'}), 403
+            # flash('Only shopkeepers can generate bills', 'danger')
+            return redirect(url_for('customer.dashboard'))
+        
+        items = Item.query.filter_by(shopkeeper_id=current_user.id).all()
 
-    if request.method == 'GET':
-        return render_template('generate_bill.html', items=items)
+        if request.method == 'GET':
+            return render_template('generate_bill.html', items=items)
 
-    # POST method - handle bill generation
-    selected_items = []
-    total_price = 0
-    customer_email = request.form.get('customer_email', '').strip().lower()
+        # POST method - handle bill generation
+        selected_items = []
+        total_price = 0
+        customer_email = request.form.get('customer_email', '').strip().lower()
 
-    for item in items:
-        if request.form.get(f'item_{item.id}'):
-            try:
-                qty = int(request.form.get(f'qty_{item.id}', 1))
-                if qty < 1:
-                    raise ValueError("Quantity must be at least 1")
-            except ValueError:
-                qty = 1  # Default to 1 if invalid
-            
-            
-            item_total = qty * item.price
-            total_price += item_total
-            selected_items.append({
-                'item': item,
-                'quantity': qty,
-                'item_total': item_total
-            })
+        for item in items:
+            if request.form.get(f'item_{item.id}'):
+                try:
+                    qty = int(request.form.get(f'qty_{item.id}', 1))
+                    if qty < 1:
+                        raise ValueError("Quantity must be at least 1")
+                except ValueError:
+                    qty = 1  # Default to 1 if invalid
+                
+                item_total = qty * item.price
+                total_price += item_total
+                selected_items.append({
+                    'item': item,
+                    'quantity': qty,
+                    'item_total': item_total
+                })
 
-    # Check if any items were selected
-    if not selected_items:
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return '<div class="alert alert-warning">Please select at least one item to generate a bill.</div>', 400
-        else:
-            flash('Please select at least one item to generate a bill.', 'warning')
-            return redirect(url_for('main.generate_bill'))
+        if not selected_items:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return '<div class="alert alert-warning">Please select at least one item to generate a bill.</div>', 400
+            else:
+                flash('Please select at least one item to generate a bill.', 'warning')
+                return redirect(url_for('main.generate_bill'))
 
-    from datetime import datetime
-    from web.models import Bill, BillItem
-    from web.utils import generate_unique_loyalty_code
-    from web.models import Bill, BillItem
-
-    # Create the bill
-    bill = Bill(
-        shopkeeper_id=current_user.id,
-        total_price=total_price,
-        customer_email=customer_email if customer_email else None
-    )
-    
-    # Generate loyalty code if customer email is provided
-    if customer_email:
-        print("Customer email:", customer_email)
-        bill.loyalty_code = generate_unique_loyalty_code()
-        print("Generated code:", bill.loyalty_code)
-        bill.loyalty_points_earned = int(total_price * 0.05)
-    db.session.add(bill)
-    db.session.flush()  # To get the bill ID
-
-    # Create bill items
-    for item_data in selected_items:
-        bill_item = BillItem(
-            bill_id=bill.id,
-            item_id=item_data['item'].id,
-            quantity=item_data['quantity'],
-            price_per_unit=item_data['item'].price
-        )
-        db.session.add(bill_item)
-
-    db.session.flush()  # To get the bill ID
-
-    # Create bill items
-    for item_data in selected_items:
-        bill_item = BillItem(
-            bill_id=bill.id,
-            item_id=item_data['item'].id,
-            quantity=item_data['quantity'],
-            price_per_unit=item_data['item'].price
-        )
-        db.session.add(bill_item)
-
-    db.session.commit()
-
-    # AJAX: Return partial template
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return render_template(
-            'partials/bill_snippet.html',
-            selected_items=selected_items,
+        # Create the bill
+        bill = Bill(
+            shopkeeper_id=current_user.id,
             total_price=total_price,
-            bill=bill,
-            now=datetime.now,
-            shop_name = current_user.shopname
+            customer_email=customer_email if customer_email else None
         )
+        
+        # Generate loyalty code if customer email is provided
+        if customer_email:
+            bill.loyalty_code = generate_unique_loyalty_code()
+            bill.loyalty_points_earned = int(total_price * 0.05)
+        
+        db.session.add(bill)
+        db.session.flush()  # To get the bill ID
 
-    # Fallback: Redirect to bill page
-    return redirect(url_for('main.generate_bill'))
+        # Create bill items
+        for item_data in selected_items:
+            bill_item = BillItem(
+                bill_id=bill.id,
+                item_id=item_data['item'].id,
+                quantity=item_data['quantity'],
+                price_per_unit=item_data['item'].price
+            )
+            db.session.add(bill_item)
+
+        db.session.commit()
+
+        # AJAX: Return partial template
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return render_template(
+                'partials/bill_snippet.html',
+                selected_items=selected_items,
+                total_price=total_price,
+                bill=bill,
+                now=datetime.now,
+                shop_name=shopkeeper.shopname
+            )
+
+        # Fallback: Redirect to bill page
+        return redirect(url_for('main.generate_bill'))
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error generating bill: {str(e)}")
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'error': str(e)}), 500
+        flash('Something went wrong while generating the bill. Please try again.', 'danger')
+        return redirect(url_for('main.generate_bill'))
 
 @customer.route('/redeem', methods=['POST'])
 @login_required
@@ -626,13 +617,13 @@ def redeem_code():
         
         db.session.commit()
         
-        flash(f'Success! {bill.loyalty_points_earned} points added to your account', 'success')
+        # flash(f'Success! {bill.loyalty_points_earned} points added to your account', 'success')
         return redirect(url_for('customer.dashboard'))
         
     except Exception as e:
         db.session.rollback()
         print(f"Error redeeming code: {e}")
-        flash('An error occurred. Please try again.', 'danger')
+        # flash('An error occurred. Please try again.', 'danger')
         return redirect(url_for('customer.dashboard'))
     
 
@@ -656,7 +647,7 @@ def add_item():
         shopkeeper_id = current_user.id
 
         if not name or price < 0:
-            flash("Invalid item data.", "warning")
+            # flash("Invalid item data.", "warning")
             return redirect(url_for('main.item_setup'))
 
         new_item = Item(name=name.strip(), price=price, shopkeeper_id=shopkeeper_id)
@@ -669,7 +660,7 @@ def add_item():
     except Exception as e:
         db.session.rollback()
         print(f"Error adding item: {e}")
-        flash("Failed to add item.", "danger")
+        # flash("Failed to add item.", "danger")
         return redirect(url_for('main.item_setup'))
 
 @main.route('/dashboard/delete-item/<int:item_id>', methods=['POST'])
@@ -743,13 +734,13 @@ def create_feedback():
                 shopkeeper_id = request.form.get('shopkeeper_id')
                 
                 if not shopkeeper_id:
-                    flash('Please select a shopkeeper.', 'danger')
+                    # flash('Please select a shopkeeper.', 'danger')
                     return render_template('feedback/create.html', form=form, shopkeepers=shopkeepers)
                 
                 # Validate shopkeeper exists
                 shopkeeper = Shopkeeper.query.get(int(shopkeeper_id))
                 if not shopkeeper:
-                    flash('Selected shopkeeper not found.', 'danger')
+                    # flash('Selected shopkeeper not found.', 'danger')
                     return render_template('feedback/create.html', form=form, shopkeepers=shopkeepers)
                 
                 # Create feedback using the service
@@ -769,20 +760,20 @@ def create_feedback():
                 if stats:
                     FeedbackService.broadcast_feedback_update(feedback, stats)
                 
-                flash('Feedback submitted successfully!', 'success')
+                # flash('Feedback submitted successfully!', 'success')
                 return redirect(url_for('customer.dashboard'))
                 
             except ValueError as ve:
                 flash(f'Validation error: {str(ve)}', 'danger')
             except Exception as e:
                 print(f"Error creating feedback: {e}")
-                flash('Error submitting feedback. Please try again.', 'danger')
+                # flash('Error submitting feedback. Please try again.', 'danger')
         
         return render_template('feedback/create.html', form=form, shopkeepers=shopkeepers)
         
     except Exception as e:
         print(f"Error in create_feedback route: {e}")
-        flash('An error occurred. Please try again.', 'danger')
+        # flash('An error occurred. Please try again.', 'danger')
         return redirect(url_for('customer.dashboard'))
 
 @main.route('/generate-qr')
@@ -793,7 +784,7 @@ def generate_qr():
     try:
         shopkeeper = Shopkeeper.query.filter_by(id=current_user.id).first()
         if not shopkeeper or not shopkeeper.username:
-            flash('Username not found. Please contact support.', 'danger')
+            # flash('Username not found. Please contact support.', 'danger')
             return redirect(url_for('main.dashboard'))
         
         feedback_url = url_for('main.public_feedback', 
@@ -803,7 +794,7 @@ def generate_qr():
         qr_image = QRCodeService.generate_qr_code(feedback_url)
         
         if qr_image is None:
-            flash('Error generating QR code. Please try again.', 'danger')
+            # flash('Error generating QR code. Please try again.', 'danger')
             return redirect(url_for('main.dashboard'))
         
         return render_template('qr_code.html', 
@@ -812,7 +803,7 @@ def generate_qr():
                              
     except Exception as e:
         print(f"Error generating QR code: {e}")
-        flash('Error generating QR code. Please try again.', 'danger')
+        # flash('Error generating QR code. Please try again.', 'danger')
         return redirect(url_for('main.dashboard'))
 
 
@@ -824,7 +815,7 @@ def download_qr():
     try:
         shopkeeper = Shopkeeper.query.filter_by(id=current_user.id).first()
         if not shopkeeper or not shopkeeper.username:
-            flash('Username not found. Please contact support.', 'danger')
+            # flash('Username not found. Please contact support.', 'danger')
             return redirect(url_for('main.dashboard'))
         
         feedback_url = url_for('main.public_feedback', 
@@ -834,7 +825,7 @@ def download_qr():
         img_buffer = QRCodeService.generate_qr_file(feedback_url)
         
         if img_buffer is None:
-            flash('Error generating QR code file. Please try again.', 'danger')
+            # flash('Error generating QR code file. Please try again.', 'danger')
             return redirect(url_for('main.dashboard'))
         
         response = make_response(img_buffer.getvalue())
@@ -845,7 +836,7 @@ def download_qr():
         
     except Exception as e:
         print(f"Error downloading QR code: {e}")
-        flash('Error downloading QR code. Please try again.', 'danger')
+        # flash('Error downloading QR code. Please try again.', 'danger')
         return redirect(url_for('main.dashboard'))
 
 
@@ -878,7 +869,7 @@ def my_feedback_dashboard():
                              
     except Exception as e:
         print(f"Error loading feedback dashboard: {e}")
-        flash('Error loading feedback dashboard. Please try again.', 'danger')
+        # flash('Error loading feedback dashboard. Please try again.', 'danger')
         return redirect(url_for('main.dashboard'))
     
 
@@ -902,7 +893,7 @@ def analytics():
         print(f"DEBUG: Shopkeeper: {shopkeeper}")  # Debug log
         
         if not shopkeeper:
-            flash('Shopkeeper account not found.', 'danger')
+            # flash('Shopkeeper account not found.', 'danger')
             return redirect(url_for('auth.login'))
         
         # Get stats
@@ -979,7 +970,7 @@ def analytics():
         print(f"ERROR Type: {type(e)}")  # Error type
         import traceback
         traceback.print_exc()  # Full traceback
-        flash('Error loading analytics. Please try again.', 'danger')
+        # flash('Error loading analytics. Please try again.', 'danger')
         return redirect(url_for('main.dashboard'))
 
 
